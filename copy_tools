@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # ============================================================
-#  COPY TOOLS v3.0 - HACKER EDITION
+#  COPY TOOLS v4.0 - CLEAN EDITION
 #  Created by : egaaX official
-#  "copy. save. conquer." 🔥
+#  "copy. save. conquer."
 # ============================================================
 
 import os
@@ -14,52 +14,28 @@ import json
 import random
 import socket
 import urllib.parse
+import ssl
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
-VERSION = '3.0'
+VERSION = '4.0'
 AUTHOR = 'egaaX official'
 
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
 
-def matrix_rain(duration=5):
-    """Efek Matrix Rain lebih lama & smooth"""
-    chars = ['0', '1', ' ', '0', '1', ' ', '0', '1', ' ', '0', '1']
-    for _ in range(duration * 12):
-        line = ''
-        for _ in range(30):
-            line += random.choice(chars)
-        print(f"\033[92m{line}\033[0m")
-        time.sleep(0.025)
-        sys.stdout.write('\033[F' * 30)
-
 def show_banner():
     clear()
-    matrix_rain(4)
-    print("""
+    now = datetime.now()
+    hari = now.strftime('%A')
+    tanggal = now.strftime('%d %B %Y')
+    jam = now.strftime('%H:%M:%S')
+    print(f"""
 \033[92m
-  ╔═══════════════════════════════════════════════════╗
-  ║  ██████╗ ██████╗ ██████╗ ██╗   ██╗              ║
-  ║  ██╔════╝██╔═══██╗██╔══██╗╚██╗ ██╔╝              ║
-  ║  ██║     ██║   ██║██████╔╝ ╚████╔╝               ║
-  ║  ██║     ██║   ██║██╔═══╝   ╚██╔╝                ║
-  ║  ╚██████╗╚██████╔╝██║        ██║                 ║
-  ║   ╚═════╝ ╚═════╝ ╚═╝        ╚═╝                 ║
-  ║  ████████╗ ██████╗  ██████╗ ██╗     ███████╗     ║
-  ║  ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔════╝     ║
-  ║     ██║   ██║   ██║██║   ██║██║     ███████╗     ║
-  ║     ██║   ██║   ██║██║   ██║██║     ╚════██║     ║
-  ║     ██║   ╚██████╔╝╚██████╔╝███████╗███████║     ║
-  ║     ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚══════╝     ║
-  ╚═══════════════════════════════════════════════════╝
-\033[0m
-\033[92m
-  ──────────────────────────────────────────────────
-  COPY TOOLS v3.0 | hacker edition
+  COPY TOOLS
   Created by : egaaX official
-  "copy. save. conquer. 🔥"
-  ──────────────────────────────────────────────────
+
+  {hari} | {tanggal} | {jam}
 \033[0m
 """)
 
@@ -190,9 +166,9 @@ def view_source(url):
     response.raise_for_status()
     html = response.text
     
-    print("\n\033[92m ════════════════════════════════════════════\033[0m")
-    print("\033[92m 📄 SOURCE CODE (first 30 lines)\033[0m")
-    print("\033[92m ════════════════════════════════════════════\033[0m")
+    print("\n\033[92m════════════════════════════════════════════\033[0m")
+    print("\033[92m📄 SOURCE CODE (first 30 lines)\033[0m")
+    print("\033[92m════════════════════════════════════════════\033[0m")
     lines = html.split('\n')[:30]
     for i, line in enumerate(lines, 1):
         clean = line.strip()
@@ -240,9 +216,9 @@ def extract_links(url):
     links = re.findall(r'<a[^>]*href=[\'"]([^\'"]+)[\'"]', html)
     unique_links = list(set(links))
     
-    print("\n\033[92m ════════════════════════════════════════════\033[0m")
-    print(f"\033[92m 🔗 EXTRACTED LINKS ({len(unique_links)} total)\033[0m")
-    print("\033[92m ════════════════════════════════════════════\033[0m")
+    print("\n\033[92m════════════════════════════════════════════\033[0m")
+    print(f"\033[92m🔗 EXTRACTED LINKS ({len(unique_links)} total)\033[0m")
+    print("\033[92m════════════════════════════════════════════\033[0m")
     for i, link in enumerate(unique_links[:30], 1):
         print(f" {i:2}. {link[:60]}")
 
@@ -256,9 +232,9 @@ def check_status(url):
         response = requests.get(url, headers=headers, timeout=10)
         status = response.status_code
         
-        print("\n\033[92m ════════════════════════════════════════════\033[0m")
-        print("\033[92m 📡 HTTP STATUS CHECK\033[0m")
-        print("\033[92m ════════════════════════════════════════════\033[0m")
+        print("\n\033[92m════════════════════════════════════════════\033[0m")
+        print("\033[92m📡 HTTP STATUS CHECK\033[0m")
+        print("\033[92m════════════════════════════════════════════\033[0m")
         print(f"\n \033[92m🔗 URL\033[0m    : {url}")
         print(f" \033[92m📊 Status\033[0m : {status} {response.reason}")
         if status == 200:
@@ -288,9 +264,9 @@ def whois_lookup(domain):
         import socket
         ip = socket.gethostbyname(domain)
         
-        print("\n\033[92m ════════════════════════════════════════════\033[0m")
-        print("\033[92m 🌐 WHOIS LOOKUP\033[0m")
-        print("\033[92m ════════════════════════════════════════════\033[0m")
+        print("\n\033[92m════════════════════════════════════════════\033[0m")
+        print("\033[92m🌐 WHOIS LOOKUP\033[0m")
+        print("\033[92m════════════════════════════════════════════\033[0m")
         print(f"\n \033[92m🌐 Domain\033[0m : {domain}")
         print(f" \033[92m📡 IP\033[0m     : {ip}")
         try:
@@ -317,9 +293,9 @@ def preview_page(url):
     response.raise_for_status()
     html = response.text[:1500]
 
-    print("\n\033[92m ════════════════════════════════════════════\033[0m")
-    print("\033[92m 📄 PAGE PREVIEW\033[0m")
-    print("\033[92m ════════════════════════════════════════════\033[0m")
+    print("\n\033[92m════════════════════════════════════════════\033[0m")
+    print("\033[92m📄 PAGE PREVIEW\033[0m")
+    print("\033[92m════════════════════════════════════════════\033[0m")
     lines = html.split('\n')[:15]
     for i, line in enumerate(lines, 1):
         clean = line.strip()[:60]
@@ -341,9 +317,9 @@ def batch_clone(urls, include_css=True):
         except Exception as e:
             results.append({'url': url, 'status': '❌', 'file': str(e)})
 
-    print("\n\033[92m ════════════════════════════════════════════\033[0m")
-    print("\033[92m 📋 BATCH REPORT\033[0m")
-    print("\033[92m ════════════════════════════════════════════\033[0m")
+    print("\n\033[92m════════════════════════════════════════════\033[0m")
+    print("\033[92m📋 BATCH REPORT\033[0m")
+    print("\033[92m════════════════════════════════════════════\033[0m")
     for r in results:
         print(f" {r['status']} {r['url']} → {r['file']}")
 
@@ -362,9 +338,9 @@ def list_cloned_files():
         warning("no cloned files found")
         return
 
-    print("\n\033[92m ════════════════════════════════════════════\033[0m")
-    print("\033[92m 📂 CLONED FILES\033[0m")
-    print("\033[92m ════════════════════════════════════════════\033[0m")
+    print("\n\033[92m════════════════════════════════════════════\033[0m")
+    print("\033[92m📂 CLONED FILES\033[0m")
+    print("\033[92m════════════════════════════════════════════\033[0m")
     for f in files:
         path = os.path.join(output_dir, f)
         size = os.path.getsize(path)
@@ -372,15 +348,87 @@ def list_cloned_files():
     print(f"\n 📂 folder: {output_dir}")
 
 # ============================================================
+# FEATURE 11: CHECK PUBLIC IP
+# ============================================================
+def check_public_ip():
+    loading_animation("getting public IP", 0.5)
+    try:
+        response = requests.get('https://api.ipify.org', timeout=5)
+        ip = response.text
+        print("\n\033[92m════════════════════════════════════════════\033[0m")
+        print("\033[92m🌍 PUBLIC IP\033[0m")
+        print("\033[92m════════════════════════════════════════════\033[0m")
+        print(f"\n \033[92m📡 IP\033[0m : {ip}")
+    except:
+        error("Failed to get public IP")
+
+# ============================================================
+# FEATURE 12: CHECK DNS RECORD
+# ============================================================
+def check_dns(domain):
+    loading_animation("checking DNS records", 0.6)
+    try:
+        domain = re.sub(r'^https?://', '', domain)
+        domain = domain.split('/')[0]
+        
+        print("\n\033[92m════════════════════════════════════════════\033[0m")
+        print("\033[92m🌐 DNS RECORDS\033[0m")
+        print("\033[92m════════════════════════════════════════════\033[0m")
+        
+        import socket
+        ip = socket.gethostbyname(domain)
+        print(f"\n \033[92m🌐 Domain\033[0m : {domain}")
+        print(f" \033[92m📡 A Record\033[0m : {ip}")
+        
+        try:
+            import dns.resolver
+            for record in ['MX', 'NS', 'TXT']:
+                try:
+                    answers = dns.resolver.resolve(domain, record)
+                    print(f" \033[92m📋 {record}\033[0m    : {[str(r) for r in answers][:3]}")
+                except:
+                    pass
+        except:
+            pass
+    except Exception as e:
+        error(f"DNS check failed: {e}")
+
+# ============================================================
+# FEATURE 13: CHECK SSL CERTIFICATE
+# ============================================================
+def check_ssl(domain):
+    loading_animation("checking SSL certificate", 0.6)
+    try:
+        domain = re.sub(r'^https?://', '', domain)
+        domain = domain.split('/')[0]
+        
+        import ssl
+        import socket
+        
+        context = ssl.create_default_context()
+        with socket.create_connection((domain, 443), timeout=5) as sock:
+            with context.wrap_socket(sock, server_hostname=domain) as ssock:
+                cert = ssock.getpeercert()
+                
+        print("\n\033[92m════════════════════════════════════════════\033[0m")
+        print("\033[92m🔒 SSL CERTIFICATE\033[0m")
+        print("\033[92m════════════════════════════════════════════\033[0m")
+        print(f"\n \033[92m🌐 Domain\033[0m    : {domain}")
+        print(f" \033[92m📅 Issuer\033[0m    : {cert.get('issuer', 'N/A')}")
+        print(f" \033[92m⏳ Expires\033[0m   : {cert.get('notAfter', 'N/A')}")
+        print(f" \033[92m✅ Valid\033[0m      : {'Yes' if cert.get('notAfter') else 'No'}")
+    except Exception as e:
+        error(f"SSL check failed: {e}")
+
+# ============================================================
 # MAIN MENU
 # ============================================================
 def main():
     show_banner()
     print("\033[92m")
-    print("  ═════════════════════════════════════════════════")
-    print("  ⚠️  website cloner tool | hacker edition")
-    print("  ⚠️  saves page to downloads/copy_tools/")
-    print("  ═════════════════════════════════════════════════")
+    print("  ════════════════════════════════════════════════")
+    print("  ⚠️  website cloner tool | saves to downloads/")
+    print("  ════════════════════════════════════════════════")
     print("\033[0m")
 
     print("\n\033[92m  📌 CHOOSE FEATURE:\033[0m")
@@ -394,9 +442,12 @@ def main():
     print("  \033[92m8\033[0m  Preview Page")
     print("  \033[92m9\033[0m  Batch Clone")
     print("  \033[92m10\033[0m View Files")
-    print("  \033[91m11\033[0m Exit")
+    print("  \033[92m11\033[0m Check Public IP")
+    print("  \033[92m12\033[0m Check DNS Record")
+    print("  \033[92m13\033[0m Check SSL Certificate")
+    print("  \033[91m14\033[0m Exit")
 
-    choice = input("\n  ➜ select (1-11): ").strip()
+    choice = input("\n  ➜ select (1-14): ").strip()
 
     if choice == '1':
         url = input("  enter url: ").strip()
@@ -495,7 +546,18 @@ def main():
         list_cloned_files()
 
     elif choice == '11':
-        print("\n\033[92m  copy. save. conquer. 🔥\033[0m")
+        check_public_ip()
+
+    elif choice == '12':
+        domain = input("  enter domain: ").strip()
+        check_dns(domain)
+
+    elif choice == '13':
+        domain = input("  enter domain: ").strip()
+        check_ssl(domain)
+
+    elif choice == '14':
+        print("\n\033[92m  copy. save. conquer.\033[0m")
         sys.exit(0)
 
     else:
