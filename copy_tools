@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-#  COPY TOOLS v7.2 - FINAL RAPIH
+#  COPY TOOLS v8.0 - FULL EDITION
 #  Created by : egaaX official
 #  "copy. save. conquer."
 # ============================================================
@@ -17,7 +17,7 @@ import threading
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
-VERSION = '7.2'
+VERSION = '8.0'
 AUTHOR = 'egaaX official'
 
 # ============================================================
@@ -137,7 +137,7 @@ def clone_page(url, include_css=True):
     filename = re.sub(r'[^a-zA-Z0-9]', '_', title)[:50] or 'cloned_page'
 
     download_path = get_downloads_path()
-    output_dir = os.path.join(download_path, 'COPY_TOOLS')
+    output_dir = os.path.join(download_path, 'BONGKAR_WEB')
     os.makedirs(output_dir, exist_ok=True)
 
     html_file = os.path.join(output_dir, f'{filename}.html')
@@ -153,7 +153,73 @@ def clone_page(url, include_css=True):
     }
 
 # ============================================================
-# TOOL 2: CHECK HTTP STATUS
+# TOOL 2: DOWNLOAD IMAGE/IKON DARI WEBSITE
+# ============================================================
+def download_images_from_website(url):
+    loading_animation("scanning for images", 0.5)
+    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
+    response = requests.get(url, headers=headers, timeout=15)
+    response.raise_for_status()
+    html = response.text
+    base_url = response.url
+
+    # Cari semua gambar (img, icon, favicon)
+    img_patterns = [
+        r'<img[^>]*src=[\'"]([^\'"]+)[\'"]',
+        r'<link[^>]*rel=[\'"]icon[\'"][^>]*href=[\'"]([^\'"]+)[\'"]',
+        r'<link[^>]*rel=[\'"]apple-touch-icon[\'"][^>]*href=[\'"]([^\'"]+)[\'"]'
+    ]
+    
+    all_images = []
+    for pattern in img_patterns:
+        matches = re.findall(pattern, html, re.IGNORECASE)
+        for img in matches:
+            full_url = urljoin(base_url, img)
+            all_images.append(full_url)
+    
+    # Hapus duplikat
+    unique_images = list(set(all_images))
+    
+    if not unique_images:
+        warning("no images found on this page")
+        return
+    
+    download_path = get_downloads_path()
+    output_dir = os.path.join(download_path, 'BONGKAR_WEB')
+    os.makedirs(output_dir, exist_ok=True)
+    
+    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
+    print(f"{BLUE}📸 DOWNLOADING IMAGES ({len(unique_images)} found){RESET}")
+    print(f"{CYAN}════════════════════════════════════════════{RESET}")
+    
+    downloaded = 0
+    for i, img_url in enumerate(unique_images[:20], 1):  # Max 20 images
+        try:
+            img_response = requests.get(img_url, headers=headers, timeout=10)
+            if img_response.status_code == 200:
+                # Ambil nama file
+                filename = img_url.split('/')[-1].split('?')[0]
+                if not filename or '.' not in filename:
+                    filename = f'image_{i}.jpg'
+                
+                # Cek tipe konten
+                content_type = img_response.headers.get('content-type', '')
+                if 'image' in content_type:
+                    filepath = os.path.join(output_dir, filename)
+                    with open(filepath, 'wb') as f:
+                        f.write(img_response.content)
+                    downloaded += 1
+                    print(f" {GREEN}✅{WHITE} {filename} ({len(img_response.content):,} bytes){RESET}")
+                else:
+                    print(f" {YELLOW}⚠️{WHITE} {filename} - not an image{RESET}")
+        except Exception as e:
+            print(f" {RED}❌{WHITE} failed: {img_url[:50]}...{RESET}")
+    
+    print(f"\n{GREEN}✅ Downloaded {downloaded} images to:{RESET}")
+    print(f"{WHITE}  {output_dir}{RESET}")
+
+# ============================================================
+# TOOL 3: CHECK HTTP STATUS
 # ============================================================
 def check_status(url):
     loading_animation("checking HTTP status", 0.5)
@@ -183,7 +249,7 @@ def check_status(url):
         error(f"Failed: {e}")
 
 # ============================================================
-# TOOL 3: GET METADATA
+# TOOL 4: GET METADATA
 # ============================================================
 def get_metadata(url):
     loading_animation("analyzing page metadata", 0.6)
@@ -214,7 +280,7 @@ def get_metadata(url):
     print(f" {BLUE}📦 Size{RESET}    : {WHITE}{len(html):,} bytes{RESET}")
 
 # ============================================================
-# TOOL 4: PREVIEW PAGE
+# TOOL 5: PREVIEW PAGE
 # ============================================================
 def preview_page(url):
     loading_animation("fetching page preview", 0.5)
@@ -233,7 +299,7 @@ def preview_page(url):
             print(f" {WHITE}{i:2}. {clean}{RESET}")
 
 # ============================================================
-# TOOL 5: BATCH CLONE
+# TOOL 6: BATCH CLONE
 # ============================================================
 def batch_clone(urls, include_css=True):
     results = []
@@ -254,22 +320,22 @@ def batch_clone(urls, include_css=True):
         print(f" {GREEN if r['status'] == '✅' else RED}{r['status']}{RESET} {WHITE}{r['url']}{RESET} → {PURPLE}{r['file']}{RESET}")
 
 # ============================================================
-# TOOL 6: VIEW CLONED FILES
+# TOOL 7: VIEW CLONED FILES
 # ============================================================
 def list_cloned_files():
     download_path = get_downloads_path()
-    output_dir = os.path.join(download_path, 'COPY_TOOLS')
+    output_dir = os.path.join(download_path, 'BONGKAR_WEB')
     if not os.path.exists(output_dir):
-        warning("no cloned files found")
+        warning("no files found in BONGKAR_WEB")
         return
 
-    files = [f for f in os.listdir(output_dir) if f.endswith('.html') or f.endswith('.jpg') or f.endswith('.png')]
+    files = os.listdir(output_dir)
     if not files:
-        warning("no cloned files found")
+        warning("no files found in BONGKAR_WEB")
         return
 
     print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
-    print(f"{BLUE}📂 CLONED FILES{RESET}")
+    print(f"{BLUE}📂 FILES IN BONGKAR_WEB{RESET}")
     print(f"{CYAN}════════════════════════════════════════════{RESET}")
     for f in files:
         path = os.path.join(output_dir, f)
@@ -278,7 +344,7 @@ def list_cloned_files():
     print(f"\n {BLUE}📂 folder:{RESET} {WHITE}{output_dir}{RESET}")
 
 # ============================================================
-# TOOL 7: EXTRACT LINKS
+# TOOL 8: EXTRACT LINKS
 # ============================================================
 def extract_links(url):
     loading_animation("extracting links", 0.5)
@@ -297,7 +363,7 @@ def extract_links(url):
         print(f" {WHITE}{i:2}. {link[:60]}{RESET}")
 
 # ============================================================
-# TOOL 8: CHECK SSL CERTIFICATE
+# TOOL 9: CHECK SSL CERTIFICATE
 # ============================================================
 def check_ssl(domain):
     loading_animation("checking SSL certificate", 0.6)
@@ -326,17 +392,17 @@ def check_ssl(domain):
 def main():
     show_banner()
     print(f"\n{YELLOW}  ════════════════════════════════════════════════{RESET}")
-    print(f"  {WHITE}⚠️  website tools | saves to downloads/{RESET}")
+    print(f"  {WHITE}⚠️  website tools | saves to BONGKAR_WEB/{RESET}")
     print(f"{YELLOW}  ════════════════════════════════════════════════{RESET}")
 
     print(f"\n{BLUE}  📌 CHOOSE FEATURE:{RESET}")
-    print(f"  {CYAN}1{WHITE}  Clone Page             {CYAN}6{WHITE}  View Cloned Files{RESET}")
-    print(f"  {CYAN}2{WHITE}  Check HTTP Status      {CYAN}7{WHITE}  Extract Links{RESET}")
-    print(f"  {CYAN}3{WHITE}  Get Metadata           {CYAN}8{WHITE}  Check SSL Certificate{RESET}")
-    print(f"  {CYAN}4{WHITE}  Preview Page           {RED}9{WHITE}  Exit{RESET}")
-    print(f"  {CYAN}5{WHITE}  Batch Clone{RESET}")
+    print(f"  {CYAN}1{WHITE}  Clone Page             {CYAN}6{WHITE}  Batch Clone{RESET}")
+    print(f"  {CYAN}2{WHITE}  Download Images/Icons   {CYAN}7{WHITE}  View Files{RESET}")
+    print(f"  {CYAN}3{WHITE}  Check HTTP Status      {CYAN}8{WHITE}  Extract Links{RESET}")
+    print(f"  {CYAN}4{WHITE}  Get Metadata           {CYAN}9{WHITE}  Check SSL Certificate{RESET}")
+    print(f"  {CYAN}5{WHITE}  Preview Page           {RED}10{WHITE} Exit{RESET}")
 
-    choice = input(f"\n  {YELLOW}➜ select (1-9): {RESET}").strip()
+    choice = input(f"\n  {YELLOW}➜ select (1-10): {RESET}").strip()
 
     if choice == '1':
         url = input(f"  {WHITE}enter url: {RESET}").strip()
@@ -358,24 +424,31 @@ def main():
         url = input(f"  {WHITE}enter url: {RESET}").strip()
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'https://' + url
+        print(f"\n  {GREEN}⏳ scanning images...{RESET}\n")
+        download_images_from_website(url)
+
+    elif choice == '3':
+        url = input(f"  {WHITE}enter url: {RESET}").strip()
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
         print(f"\n  {GREEN}⏳ checking status...{RESET}\n")
         check_status(url)
 
-    elif choice == '3':
+    elif choice == '4':
         url = input(f"  {WHITE}enter url: {RESET}").strip()
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'https://' + url
         print(f"\n  {GREEN}⏳ analyzing...{RESET}\n")
         get_metadata(url)
 
-    elif choice == '4':
+    elif choice == '5':
         url = input(f"  {WHITE}enter url: {RESET}").strip()
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'https://' + url
         print(f"\n  {GREEN}⏳ loading preview...{RESET}\n")
         preview_page(url)
 
-    elif choice == '5':
+    elif choice == '6':
         print(f"  {WHITE}enter URLs (one per line, empty to finish):{RESET}")
         urls = []
         while True:
@@ -390,22 +463,22 @@ def main():
             include_css = css_opt == 'y'
             batch_clone(urls, include_css)
 
-    elif choice == '6':
+    elif choice == '7':
         list_cloned_files()
 
-    elif choice == '7':
+    elif choice == '8':
         url = input(f"  {WHITE}enter url: {RESET}").strip()
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'https://' + url
         print(f"\n  {GREEN}⏳ extracting links...{RESET}\n")
         extract_links(url)
 
-    elif choice == '8':
+    elif choice == '9':
         domain = input(f"  {WHITE}enter domain: {RESET}").strip()
         print(f"\n  {GREEN}⏳ checking SSL...{RESET}\n")
         check_ssl(domain)
 
-    elif choice == '9':
+    elif choice == '10':
         print(f"\n{CYAN}  copy. save. conquer.{RESET}")
         sys.exit(0)
 
