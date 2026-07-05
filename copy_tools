@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-#  COPY TOOLS v0.01 - hehe:)
+#  COPY TOOLS v9.2 - FINAL RAPIH
 #  Created by : egaaX official
 #  "copy. save. conquer."
 # ============================================================
@@ -17,7 +17,7 @@ import threading
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
-VERSION = '9.1'
+VERSION = '9.2'
 AUTHOR = 'egaaX official'
 
 # ============================================================
@@ -67,6 +67,13 @@ def show_banner():
    ██║   ██║   ██║██║   ██║██║     ╚════██║
    ██║   ╚██████╔╝╚██████╔╝███████╗███████║
    ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚══════╝
+
+██╗    ██╗███████╗██████╗ ███████╗██╗████████╗███████╗
+██║    ██║██╔════╝██╔══██╗██╔════╝██║╚══██╔══╝██╔════╝
+██║ █╗ ██║█████╗  ██████╔╝███████╗██║   ██║   █████╗
+██║███╗██║██╔══╝  ██╔══██╗╚════██║██║   ██║   ██╔══╝
+╚███╔███╔╝███████╗██████╔╝███████║██║   ██║   ███████╗
+ ╚══╝╚══╝ ╚══════╝╚═════╝ ╚══════╝╚═╝   ╚═╝   ╚══════╝
 {RESET}
 {WHITE}  Created by : {CYAN}{AUTHOR}{RESET}
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
@@ -171,7 +178,7 @@ def clone_page(url, include_css=True):
     }
 
 # ============================================================
-# TOOL 2: DOWNLOAD IMAGES (DIPERCEPAT + ANIMASI)
+# TOOL 2: DOWNLOAD IMAGES
 # ============================================================
 def download_images_from_website(url):
     loading_animasi_gerak("scanning for images", 0.8)
@@ -445,11 +452,11 @@ def main():
     print(f"{GREEN}  ════════════════════════════════════════════════{RESET}")
 
     print(f"\n{CYAN}  📌 CHOOSE FEATURE:{RESET}")
-    print(f"  {GREEN}1{WHITE}  Clone Page             {GREEN}6{WHITE}  Batch Clone{RESET}")
-    print(f"  {GREEN}2{WHITE}  Download Images/Icons   {GREEN}7{WHITE}  View Files{RESET}")
-    print(f"  {GREEN}3{WHITE}  Check HTTP Status      {GREEN}8{WHITE}  Extract Links{RESET}")
-    print(f"  {GREEN}4{WHITE}  Get Metadata           {GREEN}9{WHITE}  Check SSL Certificate{RESET}")
-    print(f"  {GREEN}5{WHITE}  Preview Page           {RED}10{WHITE} Exit{RESET}")
+    print(f"  {GREEN}1{WHITE}  Clone Page              {GREEN}6{WHITE}  Batch Clone{RESET}")
+    print(f"  {GREEN}2{WHITE}  Download Images/Icons    {GREEN}7{WHITE}  View Files{RESET}")
+    print(f"  {GREEN}3{WHITE}  Check HTTP Status       {GREEN}8{WHITE}  Extract Links{RESET}")
+    print(f"  {GREEN}4{WHITE}  Get Metadata            {GREEN}9{WHITE}  Check SSL Certificate{RESET}")
+    print(f"  {GREEN}5{WHITE}  Preview Page            {RED}10{WHITE} Exit{RESET}")
 
     choice = input(f"\n  {YELLOW}➜ select (1-10): {RESET}").strip()
 
