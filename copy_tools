@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-#  EGAA TOOLS v0.01 - xixi hehe:)
+#  COPY TOOLS vevek jule - hehe:)
 #  Created by : egaaX official
 #  "copy. save. conquer."
 # ============================================================
@@ -17,7 +17,7 @@ import threading
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
-VERSION = '9.2'
+VERSION = '9.4'
 AUTHOR = 'egaaX official'
 
 # ============================================================
@@ -452,11 +452,11 @@ def main():
     print(f"{GREEN}  ════════════════════════════════════════════════{RESET}")
 
     print(f"\n{CYAN}  📌 CHOOSE FEATURE:{RESET}")
-    print(f"  {GREEN}1{WHITE}  Clone Page              {GREEN}6{WHITE}  Batch Clone{RESET}")
-    print(f"  {GREEN}2{WHITE}  Download Images/Icons    {GREEN}7{WHITE}  View Files{RESET}")
-    print(f"  {GREEN}3{WHITE}  Check HTTP Status       {GREEN}8{WHITE}  Extract Links{RESET}")
-    print(f"  {GREEN}4{WHITE}  Get Metadata            {GREEN}9{WHITE}  Check SSL Certificate{RESET}")
-    print(f"  {GREEN}5{WHITE}  Preview Page            {RED}10{WHITE} Exit{RESET}")
+    print(f"  {GREEN}1{WHITE}  Clone Page            {CYAN}|{WHITE}  {GREEN}6{WHITE}  Batch Clone{RESET}")
+    print(f"  {GREEN}2{WHITE}  Download Images/Icons  {CYAN}|{WHITE}  {GREEN}7{WHITE}  View Files{RESET}")
+    print(f"  {GREEN}3{WHITE}  Check HTTP Status     {CYAN}|{WHITE}  {GREEN}8{WHITE}  Extract Links{RESET}")
+    print(f"  {GREEN}4{WHITE}  Get Metadata          {CYAN}|{WHITE}  {GREEN}9{WHITE}  Check SSL Certificate{RESET}")
+    print(f"  {GREEN}5{WHITE}  Preview Page          {CYAN}|{WHITE}  {RED}10{WHITE} Exit{RESET}")
 
     choice = input(f"\n  {YELLOW}➜ select (1-10): {RESET}").strip()
 
