@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-#  COPY TOOLS v6.2 - FINAL FIX
+#  COPY TOOLS v7.2 - FINAL RAPIH
 #  Created by : egaaX official
 #  "copy. save. conquer."
 # ============================================================
@@ -17,19 +17,19 @@ import threading
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
-VERSION = '6.2'
+VERSION = '7.2'
 AUTHOR = 'egaaX official'
 
 # ============================================================
 # WARNA
 # ============================================================
-GREEN = '\033[92m'
-DARK = '\033[90m'
 CYAN = '\033[96m'
 YELLOW = '\033[93m'
+GREEN = '\033[92m'
 WHITE = '\033[97m'
 PURPLE = '\033[95m'
 RED = '\033[91m'
+BLUE = '\033[94m'
 RESET = '\033[0m'
 
 def clear():
@@ -52,24 +52,23 @@ clock_thread.start()
 def show_banner():
     clear()
     hari, tanggal, jam = get_datetime()
-    # BANNER KECIL & RAPIH (MUAT DI HP)
     print(f"""
-{GREEN}  ██████╗ {DARK} ██████╗ {GREEN} ██████╗ {DARK} ██╗   ██╗
-{GREEN}  ██╔════╝ {DARK}██╔═══██╗{GREEN}██╔══██╗{DARK} ╚██╗ ██╔╝
-{GREEN}  ██║     {DARK}██║   ██║{GREEN}██████╔╝{DARK}    ╚████╔╝
-{GREEN}  ██║     {DARK}██║   ██║{GREEN}██╔═══╝{DARK}      ╚██╔╝
-{GREEN}  ╚██████╗{DARK}╚██████╔╝{GREEN}██║     {DARK}     ██║
-{GREEN}   ╚═════╝ {DARK}╚═════╝ {GREEN}╚═╝     {DARK}     ╚═╝
+{CYAN}  ██████╗ {YELLOW} ██████╗ {CYAN} ██████╗ {YELLOW} ██╗   ██╗
+{CYAN}  ██╔════╝ {YELLOW}██╔═══██╗{CYAN}██╔══██╗{YELLOW}╚██╗ ██╔╝
+{CYAN}  ██║     {YELLOW}██║   ██║{CYAN}██████╔╝{YELLOW} ╚████╔╝
+{CYAN}  ██║     {YELLOW}██║   ██║{CYAN}██╔═══╝{YELLOW}  ╚██╔╝
+{CYAN}  ╚██████╗{YELLOW}╚██████╔╝{CYAN}██║     {YELLOW}  ██║
+{CYAN}   ╚═════╝ {YELLOW}╚═════╝ {CYAN}╚═╝     {YELLOW}  ╚═╝
 
-{GREEN}  ████████╗ {DARK} ██████╗  {GREEN}██████╗ {DARK}██╗     {GREEN}███████╗
-{GREEN}  ╚══██╔══╝{DARK}██╔═══██╗{GREEN}██╔═══██╗{DARK}██║     {GREEN}██╔════╝
-{GREEN}     ██║   {DARK}██║   ██║{GREEN}██║   ██║{DARK}██║     {GREEN}███████╗
-{GREEN}     ██║   {DARK}██║   ██║{GREEN}██║   ██║{DARK}██║     {GREEN}╚════██║
-{GREEN}     ██║   {DARK}╚██████╔╝{GREEN}╚██████╔╝{DARK}███████╗{GREEN}███████║
-{GREEN}     ╚═╝    {DARK}╚═════╝  {GREEN}╚═════╝ {DARK}╚══════╝{GREEN}╚══════╝
+{CYAN}  ████████╗ {YELLOW} ██████╗  {CYAN} ██████╗ {YELLOW} ██╗     {CYAN} ███████╗
+{CYAN}  ╚══██╔══╝{YELLOW}██╔═══██╗{CYAN}██╔═══██╗{YELLOW}██║     {CYAN}██╔════╝
+{CYAN}     ██║   {YELLOW}██║   ██║{CYAN}██║   ██║{YELLOW}██║     {CYAN}███████╗
+{CYAN}     ██║   {YELLOW}██║   ██║{CYAN}██║   ██║{YELLOW}██║     {CYAN}╚════██║
+{CYAN}     ██║   {YELLOW}╚██████╔╝{CYAN}╚██████╔╝{YELLOW}███████╗{CYAN}███████║
+{CYAN}     ╚═╝    {YELLOW}╚═════╝  {CYAN} ╚═════╝ {YELLOW} ╚══════╝{CYAN}╚══════╝
 {RESET}
-{WHITE}  Created by : {CYAN}{AUTHOR}{RESET}
-{WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {CYAN}{jam}{RESET}
+{WHITE}  Created by : {PURPLE}{AUTHOR}{RESET}
+{WHITE}  {hari} | {GREEN}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
 """)
 
 def loading_animation(text, duration=0.8):
@@ -96,7 +95,7 @@ def warning(text):
     print(f" {YELLOW}• {text}{RESET}")
 
 def info(text):
-    print(f" {CYAN}• {text}{RESET}")
+    print(f" {BLUE}• {text}{RESET}")
 
 def get_downloads_path():
     paths = [
@@ -163,11 +162,11 @@ def check_status(url):
         response = requests.get(url, headers=headers, timeout=10)
         status = response.status_code
         
-        print(f"\n{GREEN}════════════════════════════════════════════{RESET}")
-        print(f"{CYAN}📡 HTTP STATUS CHECK{RESET}")
-        print(f"{GREEN}════════════════════════════════════════════{RESET}")
-        print(f"\n {CYAN}🔗 URL{RESET}    : {WHITE}{url}{RESET}")
-        print(f" {CYAN}📊 Status{RESET} : {WHITE}{status} {response.reason}{RESET}")
+        print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
+        print(f"{BLUE}📡 HTTP STATUS CHECK{RESET}")
+        print(f"{CYAN}════════════════════════════════════════════{RESET}")
+        print(f"\n {BLUE}🔗 URL{RESET}    : {WHITE}{url}{RESET}")
+        print(f" {BLUE}📊 Status{RESET} : {WHITE}{status} {response.reason}{RESET}")
         if status == 200:
             print(f" {GREEN}✅ Status{RESET} : ONLINE")
         elif status == 404:
@@ -178,8 +177,8 @@ def check_status(url):
             print(f" {RED}❌ Status{RESET} : SERVER ERROR")
         else:
             print(f" {YELLOW}ℹ️ Status{RESET} : {status}")
-        print(f" {CYAN}📦 Size{RESET}   : {WHITE}{len(response.text):,} bytes{RESET}")
-        print(f" {CYAN}⏱️  Time{RESET}   : {WHITE}{response.elapsed.total_seconds():.2f}s{RESET}")
+        print(f" {BLUE}📦 Size{RESET}   : {WHITE}{len(response.text):,} bytes{RESET}")
+        print(f" {BLUE}⏱️  Time{RESET}   : {WHITE}{response.elapsed.total_seconds():.2f}s{RESET}")
     except Exception as e:
         error(f"Failed: {e}")
 
@@ -203,16 +202,16 @@ def get_metadata(url):
     images_count = len(re.findall(r'<img[^>]*src=[\'"][^\'"]+[\'"]', html))
     scripts_count = len(re.findall(r'<script[^>]*src=[\'"][^\'"]+[\'"]', html))
 
-    print(f"\n{GREEN}════════════════════════════════════════════{RESET}")
-    print(f"{CYAN}📋 PAGE METADATA{RESET}")
-    print(f"{GREEN}════════════════════════════════════════════{RESET}")
-    print(f"\n {CYAN}🔗 URL{RESET}     : {WHITE}{url}{RESET}")
-    print(f" {CYAN}📄 Title{RESET}   : {WHITE}{title}{RESET}")
-    print(f" {CYAN}📝 Desc{RESET}    : {WHITE}{desc}{RESET}")
-    print(f" {CYAN}🔗 Links{RESET}   : {WHITE}{links_count}{RESET}")
-    print(f" {CYAN}🖼️ Images{RESET}  : {WHITE}{images_count}{RESET}")
-    print(f" {CYAN}📜 Scripts{RESET} : {WHITE}{scripts_count}{RESET}")
-    print(f" {CYAN}📦 Size{RESET}    : {WHITE}{len(html):,} bytes{RESET}")
+    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
+    print(f"{BLUE}📋 PAGE METADATA{RESET}")
+    print(f"{CYAN}════════════════════════════════════════════{RESET}")
+    print(f"\n {BLUE}🔗 URL{RESET}     : {WHITE}{url}{RESET}")
+    print(f" {BLUE}📄 Title{RESET}   : {WHITE}{title}{RESET}")
+    print(f" {BLUE}📝 Desc{RESET}    : {WHITE}{desc}{RESET}")
+    print(f" {BLUE}🔗 Links{RESET}   : {WHITE}{links_count}{RESET}")
+    print(f" {BLUE}🖼️ Images{RESET}  : {WHITE}{images_count}{RESET}")
+    print(f" {BLUE}📜 Scripts{RESET} : {WHITE}{scripts_count}{RESET}")
+    print(f" {BLUE}📦 Size{RESET}    : {WHITE}{len(html):,} bytes{RESET}")
 
 # ============================================================
 # TOOL 4: PREVIEW PAGE
@@ -224,9 +223,9 @@ def preview_page(url):
     response.raise_for_status()
     html = response.text[:1500]
 
-    print(f"\n{GREEN}════════════════════════════════════════════{RESET}")
-    print(f"{CYAN}📄 PAGE PREVIEW{RESET}")
-    print(f"{GREEN}════════════════════════════════════════════{RESET}")
+    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
+    print(f"{BLUE}📄 PAGE PREVIEW{RESET}")
+    print(f"{CYAN}════════════════════════════════════════════{RESET}")
     lines = html.split('\n')[:15]
     for i, line in enumerate(lines, 1):
         clean = line.strip()[:60]
@@ -248,11 +247,11 @@ def batch_clone(urls, include_css=True):
         except Exception as e:
             results.append({'url': url, 'status': '❌', 'file': str(e)})
 
-    print(f"\n{GREEN}════════════════════════════════════════════{RESET}")
-    print(f"{CYAN}📋 BATCH REPORT{RESET}")
-    print(f"{GREEN}════════════════════════════════════════════{RESET}")
+    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
+    print(f"{BLUE}📋 BATCH REPORT{RESET}")
+    print(f"{CYAN}════════════════════════════════════════════{RESET}")
     for r in results:
-        print(f" {GREEN if r['status'] == '✅' else RED}{r['status']}{RESET} {WHITE}{r['url']}{RESET} → {CYAN}{r['file']}{RESET}")
+        print(f" {GREEN if r['status'] == '✅' else RED}{r['status']}{RESET} {WHITE}{r['url']}{RESET} → {PURPLE}{r['file']}{RESET}")
 
 # ============================================================
 # TOOL 6: VIEW CLONED FILES
@@ -269,14 +268,14 @@ def list_cloned_files():
         warning("no cloned files found")
         return
 
-    print(f"\n{GREEN}════════════════════════════════════════════{RESET}")
-    print(f"{CYAN}📂 CLONED FILES{RESET}")
-    print(f"{GREEN}════════════════════════════════════════════{RESET}")
+    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
+    print(f"{BLUE}📂 CLONED FILES{RESET}")
+    print(f"{CYAN}════════════════════════════════════════════{RESET}")
     for f in files:
         path = os.path.join(output_dir, f)
         size = os.path.getsize(path)
         print(f" {WHITE}📄 {f} ({size:,} bytes){RESET}")
-    print(f"\n {CYAN}📂 folder:{RESET} {WHITE}{output_dir}{RESET}")
+    print(f"\n {BLUE}📂 folder:{RESET} {WHITE}{output_dir}{RESET}")
 
 # ============================================================
 # TOOL 7: EXTRACT LINKS
@@ -291,9 +290,9 @@ def extract_links(url):
     links = re.findall(r'<a[^>]*href=[\'"]([^\'"]+)[\'"]', html)
     unique_links = list(set(links))
     
-    print(f"\n{GREEN}════════════════════════════════════════════{RESET}")
-    print(f"{CYAN}🔗 EXTRACTED LINKS ({len(unique_links)} total){RESET}")
-    print(f"{GREEN}════════════════════════════════════════════{RESET}")
+    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
+    print(f"{BLUE}🔗 EXTRACTED LINKS ({len(unique_links)} total){RESET}")
+    print(f"{CYAN}════════════════════════════════════════════{RESET}")
     for i, link in enumerate(unique_links[:30], 1):
         print(f" {WHITE}{i:2}. {link[:60]}{RESET}")
 
@@ -311,12 +310,12 @@ def check_ssl(domain):
             with context.wrap_socket(sock, server_hostname=domain) as ssock:
                 cert = ssock.getpeercert()
                 
-        print(f"\n{GREEN}════════════════════════════════════════════{RESET}")
-        print(f"{CYAN}🔒 SSL CERTIFICATE{RESET}")
-        print(f"{GREEN}════════════════════════════════════════════{RESET}")
-        print(f"\n {CYAN}🌐 Domain{RESET}    : {WHITE}{domain}{RESET}")
-        print(f" {CYAN}📅 Issuer{RESET}    : {WHITE}{cert.get('issuer', 'N/A')}{RESET}")
-        print(f" {CYAN}⏳ Expires{RESET}   : {WHITE}{cert.get('notAfter', 'N/A')}{RESET}")
+        print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
+        print(f"{BLUE}🔒 SSL CERTIFICATE{RESET}")
+        print(f"{CYAN}════════════════════════════════════════════{RESET}")
+        print(f"\n {BLUE}🌐 Domain{RESET}    : {WHITE}{domain}{RESET}")
+        print(f" {BLUE}📅 Issuer{RESET}    : {WHITE}{cert.get('issuer', 'N/A')}{RESET}")
+        print(f" {BLUE}⏳ Expires{RESET}   : {WHITE}{cert.get('notAfter', 'N/A')}{RESET}")
         print(f" {GREEN}✅ Valid{RESET}      : {WHITE}{'Yes' if cert.get('notAfter') else 'No'}{RESET}")
     except Exception as e:
         error(f"SSL check failed: {e}")
@@ -326,20 +325,16 @@ def check_ssl(domain):
 # ============================================================
 def main():
     show_banner()
-    print(f"\n{GREEN}  ════════════════════════════════════════════════{RESET}")
-    print(f"  {YELLOW}⚠️  website tools | saves to downloads/{RESET}")
-    print(f"{GREEN}  ════════════════════════════════════════════════{RESET}")
+    print(f"\n{YELLOW}  ════════════════════════════════════════════════{RESET}")
+    print(f"  {WHITE}⚠️  website tools | saves to downloads/{RESET}")
+    print(f"{YELLOW}  ════════════════════════════════════════════════{RESET}")
 
-    print(f"\n{CYAN}  📌 CHOOSE FEATURE:{RESET}")
-    print(f"  {GREEN}1{WHITE}  Clone Page{RESET}")
-    print(f"  {GREEN}2{WHITE}  Check HTTP Status (200/404){RESET}")
-    print(f"  {GREEN}3{WHITE}  Get Metadata{RESET}")
-    print(f"  {GREEN}4{WHITE}  Preview Page{RESET}")
-    print(f"  {GREEN}5{WHITE}  Batch Clone{RESET}")
-    print(f"  {GREEN}6{WHITE}  View Cloned Files{RESET}")
-    print(f"  {GREEN}7{WHITE}  Extract Links{RESET}")
-    print(f"  {GREEN}8{WHITE}  Check SSL Certificate{RESET}")
-    print(f"  {RED}9{WHITE}  Exit{RESET}")
+    print(f"\n{BLUE}  📌 CHOOSE FEATURE:{RESET}")
+    print(f"  {CYAN}1{WHITE}  Clone Page             {CYAN}6{WHITE}  View Cloned Files{RESET}")
+    print(f"  {CYAN}2{WHITE}  Check HTTP Status      {CYAN}7{WHITE}  Extract Links{RESET}")
+    print(f"  {CYAN}3{WHITE}  Get Metadata           {CYAN}8{WHITE}  Check SSL Certificate{RESET}")
+    print(f"  {CYAN}4{WHITE}  Preview Page           {RED}9{WHITE}  Exit{RESET}")
+    print(f"  {CYAN}5{WHITE}  Batch Clone{RESET}")
 
     choice = input(f"\n  {YELLOW}➜ select (1-9): {RESET}").strip()
 
@@ -351,13 +346,13 @@ def main():
         include_css = css_opt == 'y'
         print(f"\n  {GREEN}⏳ cloning...{RESET}\n")
         result = clone_page(url, include_css)
-        print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {CYAN}📋 CLONE REPORT{RESET}")
-        print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
+        print(f"\n{YELLOW}  ════════════════════════════════════════════{RESET}")
+        print(f"  {BLUE}📋 CLONE REPORT{RESET}")
+        print(f"{YELLOW}  ════════════════════════════════════════════{RESET}")
         print(f"\n  {GREEN}✅ status{RESET} : {WHITE}success{RESET}")
-        print(f"  {CYAN}📄 title{RESET} : {WHITE}{result['title']}{RESET}")
-        print(f"  {CYAN}📁 saved{RESET} : {WHITE}{result['path']}{RESET}")
-        print(f"  {CYAN}📦 size{RESET}  : {WHITE}{result['size']:,} bytes{RESET}")
+        print(f"  {BLUE}📄 title{RESET} : {WHITE}{result['title']}{RESET}")
+        print(f"  {BLUE}📁 saved{RESET} : {WHITE}{result['path']}{RESET}")
+        print(f"  {BLUE}📦 size{RESET}  : {WHITE}{result['size']:,} bytes{RESET}")
 
     elif choice == '2':
         url = input(f"  {WHITE}enter url: {RESET}").strip()
@@ -411,13 +406,13 @@ def main():
         check_ssl(domain)
 
     elif choice == '9':
-        print(f"\n{GREEN}  copy. save. conquer.{RESET}")
+        print(f"\n{CYAN}  copy. save. conquer.{RESET}")
         sys.exit(0)
 
     else:
         error("invalid choice")
 
-    input(f"\n{GREEN}  press enter to continue...{RESET}")
+    input(f"\n{YELLOW}  press enter to continue...{RESET}")
     main()
 
 if __name__ == '__main__':
