@@ -9,7 +9,7 @@
 ██║██║ ╚████║██║     ╚██████╔╝
 ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝
 
-untuk pemasangan nya kalian salin aja semua ini:)
+UNTUK PEMASANGAN NYA KALIAN SALIN AJA SEMUA INI:)
 
 pkg update -y && pkg upgrade -y
 pkg install python git -y
@@ -33,8 +33,8 @@ python copy_tools.py
 ██║██║ ╚████║██║     ╚██████╔╝
 ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝
 
-Jika habis keluar dari Termux lalu hilang,
-cukup jalankan command berikut.
+JIKA HABIS KELUAR DARI TERMUX LALU HILANG
+CUKIP JALANKAN COMMAND BERIKUT:)
 
 cd ~/copy-tool
 git pull
