@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-#  COPY TOOLS v1.0 - MULTI FEATURE CLONER
+#  COPY TOOLS v2.0 - HACKER EDITION
 #  Created by : egaaX official
 #  "copy. save. conquer." 🔥
 # ============================================================
@@ -11,33 +11,82 @@ import time
 import requests
 import re
 import json
+import random
+import socket
+import urllib.parse
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
-VERSION = '1.0'
+VERSION = '2.0'
 AUTHOR = 'egaaX official'
 
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
+
+def matrix_rain(duration=3):
+    """Efek Matrix Rain (kode jatuh)"""
+    chars = ['0', '1', ' ', '0', '1', ' ', '0', '1']
+    for _ in range(duration * 10):
+        line = ''
+        for _ in range(40):
+            line += random.choice(chars)
+        print(f"\033[92m{line}\033[0m")
+        time.sleep(0.03)
+        sys.stdout.write('\033[F' * 40)
+
+def glitch_text(text, repeat=3):
+    """Efek glitch pada teks"""
+    for i in range(repeat):
+        if i % 2 == 0:
+            print(f"\033[91m{text}\033[0m")
+        else:
+            print(f"\033[92m{text}\033[0m")
+        time.sleep(0.1)
+        sys.stdout.write('\033[F')
+    print(f"\033[92m{text}\033[0m")
+
+def show_hacker_banner():
+    clear()
+    # Matrix rain dulu
+    matrix_rain(2)
+    
+    print("""
+\033[92m
+   ██████╗ ██████╗ ██████╗ ██╗   ██╗    ████████╗ ██████╗  ██████╗ ██╗     ███████╗
+  ██╔════╝██╔═══██╗██╔══██╗╚██╗ ██╔╝    ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔════╝
+  ██║     ██║   ██║██████╔╝ ╚████╔╝        ██║   ██║   ██║██║   ██║██║     ███████╗
+  ██║     ██║   ██║██╔═══╝   ╚██╔╝         ██║   ██║   ██║██║   ██║██║     ╚════██║
+  ╚██████╗╚██████╔╝██║        ██║          ██║   ╚██████╔╝╚██████╔╝███████╗███████║
+   ╚═════╝ ╚═════╝ ╚═╝        ╚═╝          ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚══════╝
+
+   ███████╗ ██████╗  ██████╗     ██╗  ██╗ █████╗  ██████╗██╗  ██╗███████╗██████╗
+   ██╔════╝██╔═══██╗██╔════╝     ██║  ██║██╔══██╗██╔════╝██║  ██║██╔════╝██╔══██╗
+   █████╗  ██║   ██║██║  ███╗    ███████║███████║██║     ███████║█████╗  ██████╔╝
+   ██╔══╝  ██║   ██║██║   ██║    ██╔══██║██╔══██║██║     ██╔══██║██╔══╝  ██╔══██╗
+   ██║     ╚██████╔╝╚██████╔╝    ██║  ██║██║  ██║╚██████╗██║  ██║███████╗██║  ██║
+   ╚═╝      ╚═════╝  ╚═════╝     ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
+\033[0m
+\033[92m
+  ──────────────────────────────────────────────────────────────
+  COPY TOOLS v2.0 | hacker edition multi feature cloner
+  Created by : egaaX official
+  "copy. save. conquer. 🔥 | hack the planet 🌍"
+  ──────────────────────────────────────────────────────────────
+\033[0m
+""")
+    glitch_text("  >> SYSTEM INITIALIZED <<", 2)
+    time.sleep(0.5)
 
 def loading_animation(text, duration=0.8):
     chars = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
     end_time = time.time() + duration
     i = 0
     while time.time() < end_time:
-        sys.stdout.write(f'\r \033[96m[{chars[i % len(chars)]}] {text}\033[0m')
+        sys.stdout.write(f'\r \033[92m[{chars[i % len(chars)]}] {text}\033[0m')
         sys.stdout.flush()
         time.sleep(0.08)
         i += 1
     sys.stdout.write(f'\r \033[92m[✓] {text}\033[0m\n')
-
-def progress_bar(current, total, label='processing'):
-    bar_length = 25
-    filled = int(bar_length * current / total)
-    bar = '█' * filled + '░' * (bar_length - filled)
-    percent = round(current / total * 100, 1)
-    sys.stdout.write(f'\r \033[96m[{bar}] {percent}% - {label}\033[0m')
-    sys.stdout.flush()
 
 def loading(text):
     print(f" \033[92m• {text}\033[0m")
@@ -57,33 +106,6 @@ def info(text):
 def divider():
     print(" " + "-" * 50)
 
-def show_banner():
-    clear()
-    print("""
-\033[96m
-   ██████╗ ██████╗ ██████╗ ██╗   ██╗
-  ██╔════╝██╔═══██╗██╔══██╗╚██╗ ██╔╝
-  ██║     ██║   ██║██████╔╝ ╚████╔╝
-  ██║     ██║   ██║██╔═══╝   ╚██╔╝
-  ╚██████╗╚██████╔╝██║        ██║
-   ╚═════╝ ╚═════╝ ╚═╝        ╚═╝
-
-   ████████╗ ██████╗  ██████╗ ██╗     ███████╗
-   ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔════╝
-      ██║   ██║   ██║██║   ██║██║     ███████╗
-      ██║   ██║   ██║██║   ██║██║     ╚════██║
-      ██║   ╚██████╔╝╚██████╔╝███████╗███████║
-      ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚══════╝
-\033[0m
-\033[93m
-  ──────────────────────────────────────────────
-  COPY TOOLS v1.0 | multi feature cloner
-  Created by : egaaX official
-  "copy. save. conquer." 🔥
-  ──────────────────────────────────────────────
-\033[0m
-""")
-
 def get_downloads_path():
     paths = [
         '/storage/emulated/0/Download',
@@ -95,6 +117,9 @@ def get_downloads_path():
             return p
     return os.path.expanduser('~/downloads')
 
+# ============================================================
+# FEATURE 1: CLONE PAGE
+# ============================================================
 def clone_page(url, include_css=True):
     loading_animation("initializing cloner", 0.5)
     loading_animation(f"fetching: {url}", 0.6)
@@ -136,6 +161,9 @@ def clone_page(url, include_css=True):
         'filename': filename
     }
 
+# ============================================================
+# FEATURE 2: GET PAGE METADATA
+# ============================================================
 def get_metadata(url):
     loading_animation("analyzing page metadata", 0.6)
     headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
@@ -169,6 +197,144 @@ def get_metadata(url):
         'size': len(html)
     }
 
+# ============================================================
+# FEATURE 3: VIEW SOURCE
+# ============================================================
+def view_source(url):
+    loading_animation("fetching source code", 0.5)
+    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+    html = response.text
+    
+    print("\n\033[92m ════════════════════════════════════════════\033[0m")
+    print("\033[92m 📄 SOURCE CODE (first 50 lines)\033[0m")
+    print("\033[92m ════════════════════════════════════════════\033[0m")
+    lines = html.split('\n')[:50]
+    for i, line in enumerate(lines, 1):
+        clean = line.strip()
+        if clean:
+            print(f" {i:3}. \033[92m{clean}\033[0m")
+    print(f"\n \033[92m📦 total size\033[0m: {len(html):,} bytes (first 50 lines shown)")
+
+# ============================================================
+# FEATURE 4: DOWNLOAD IMAGE
+# ============================================================
+def download_image(url):
+    loading_animation("downloading image", 0.5)
+    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
+    response = requests.get(url, headers=headers, timeout=15)
+    response.raise_for_status()
+    
+    # Ambil nama file dari URL
+    filename = url.split('/')[-1].split('?')[0]
+    if not filename or '.' not in filename:
+        filename = f"downloaded_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+    
+    download_path = get_downloads_path()
+    output_dir = os.path.join(download_path, 'COPY_TOOLS')
+    os.makedirs(output_dir, exist_ok=True)
+    
+    filepath = os.path.join(output_dir, filename)
+    with open(filepath, 'wb') as f:
+        f.write(response.content)
+    
+    return {
+        'success': True,
+        'path': filepath,
+        'size': len(response.content),
+        'filename': filename
+    }
+
+# ============================================================
+# FEATURE 5: EXTRACT LINKS
+# ============================================================
+def extract_links(url):
+    loading_animation("extracting links", 0.5)
+    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+    html = response.text
+    
+    links = re.findall(r'<a[^>]*href=[\'"]([^\'"]+)[\'"]', html)
+    unique_links = list(set(links))
+    
+    print("\n\033[92m ════════════════════════════════════════════\033[0m")
+    print(f"\033[92m 🔗 EXTRACTED LINKS ({len(unique_links)} total)\033[0m")
+    print("\033[92m ════════════════════════════════════════════\033[0m")
+    for i, link in enumerate(unique_links[:50], 1):
+        print(f" {i:3}. {link}")
+    if len(unique_links) > 50:
+        print(f"\n \033[93m... and {len(unique_links) - 50} more\033[0m")
+
+# ============================================================
+# FEATURE 6: CHECK STATUS
+# ============================================================
+def check_status(url):
+    loading_animation("checking HTTP status", 0.5)
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
+        response = requests.get(url, headers=headers, timeout=10)
+        status = response.status_code
+        reason = response.reason
+        
+        print("\n\033[92m ════════════════════════════════════════════\033[0m")
+        print("\033[92m 📡 HTTP STATUS CHECK\033[0m")
+        print("\033[92m ════════════════════════════════════════════\033[0m")
+        print(f"\n \033[92m🔗 URL\033[0m     : {url}")
+        print(f" \033[92m📊 Status\033[0m  : {status} {reason}")
+        if status == 200:
+            print(" \033[92m✅ Status\033[0m  : OK - Page is accessible")
+        elif status == 301 or status == 302:
+            print(" \033[93m🔄 Status\033[0m  : Redirect - Page moved")
+        elif status == 404:
+            print(" \033[91m❌ Status\033[0m  : Not Found - Page doesn't exist")
+        elif status >= 500:
+            print(" \033[91m❌ Status\033[0m  : Server Error")
+        else:
+            print(f" \033[93mℹ️ Status\033[0m  : {status}")
+        print(f" \033[92m📦 Size\033[0m    : {len(response.text):,} bytes")
+        print(f" \033[92m⏱️  Time\033[0m    : {response.elapsed.total_seconds():.2f}s")
+    except Exception as e:
+        error(f"Failed to check status: {e}")
+
+# ============================================================
+# FEATURE 7: WHOIS LOOKUP
+# ============================================================
+def whois_lookup(domain):
+    loading_animation("performing WHOIS lookup", 0.8)
+    try:
+        # Bersihkan domain
+        domain = re.sub(r'^https?://', '', domain)
+        domain = domain.split('/')[0]
+        
+        import socket
+        ip = socket.gethostbyname(domain)
+        
+        print("\n\033[92m ════════════════════════════════════════════\033[0m")
+        print("\033[92m 🌐 WHOIS LOOKUP\033[0m")
+        print("\033[92m ════════════════════════════════════════════\033[0m")
+        print(f"\n \033[92m🌐 Domain\033[0m   : {domain}")
+        print(f" \033[92m📡 IP\033[0m       : {ip}")
+        
+        try:
+            import whois
+            w = whois.whois(domain)
+            if w.creation_date:
+                print(f" \033[92m📅 Created\033[0m  : {w.creation_date}")
+            if w.expiration_date:
+                print(f" \033[92m⏳ Expires\033[0m  : {w.expiration_date}")
+            if w.registrar:
+                print(f" \033[92m🏢 Registrar\033[0m: {w.registrar}")
+        except ImportError:
+            print(" \033[93m⚠️  whois module not installed. Basic info only.\033[0m")
+            print(" \033[93m💡 Install: pip install python-whois\033[0m")
+    except Exception as e:
+        error(f"WHOIS lookup failed: {e}")
+
+# ============================================================
+# FEATURE 8: PREVIEW PAGE
+# ============================================================
 def preview_page(url):
     loading_animation("fetching page preview", 0.5)
     headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
@@ -176,16 +342,19 @@ def preview_page(url):
     response.raise_for_status()
     html = response.text[:2000]
 
-    print("\n\033[96m ════════════════════════════════════════════\033[0m")
-    print("\033[96m 📄 PAGE PREVIEW (first 20 lines)\033[0m")
-    print("\033[96m ════════════════════════════════════════════\033[0m")
+    print("\n\033[92m ════════════════════════════════════════════\033[0m")
+    print("\033[92m 📄 PAGE PREVIEW (first 20 lines)\033[0m")
+    print("\033[92m ════════════════════════════════════════════\033[0m")
     lines = html.split('\n')[:20]
     for i, line in enumerate(lines, 1):
         clean = line.strip()[:80]
         if clean:
             print(f" {i:2}. {clean}")
-    print(f"\n \033[94m📦 total size\033[0m: {len(html):,} bytes (first 2kb shown)")
+    print(f"\n \033[92m📦 total size\033[0m: {len(html):,} bytes (first 2kb shown)")
 
+# ============================================================
+# FEATURE 9: BATCH CLONE
+# ============================================================
 def batch_clone(urls, include_css=True):
     results = []
     total = len(urls)
@@ -198,13 +367,16 @@ def batch_clone(urls, include_css=True):
         except Exception as e:
             results.append({'url': url, 'status': '❌', 'file': str(e)})
 
-    print("\n\033[96m ════════════════════════════════════════════\033[0m")
-    print("\033[96m 📋 BATCH REPORT\033[0m")
-    print("\033[96m ════════════════════════════════════════════\033[0m")
+    print("\n\033[92m ════════════════════════════════════════════\033[0m")
+    print("\033[92m 📋 BATCH REPORT\033[0m")
+    print("\033[92m ════════════════════════════════════════════\033[0m")
     for r in results:
         print(f" {r['status']} {r['url']} → {r['file']}")
     return results
 
+# ============================================================
+# FEATURE 10: VIEW CLONED FILES
+# ============================================================
 def list_cloned_files():
     download_path = get_downloads_path()
     output_dir = os.path.join(download_path, 'COPY_TOOLS')
@@ -212,37 +384,45 @@ def list_cloned_files():
         warning("no cloned files found")
         return
 
-    files = [f for f in os.listdir(output_dir) if f.endswith('.html')]
+    files = [f for f in os.listdir(output_dir) if f.endswith('.html') or f.endswith('.jpg') or f.endswith('.png')]
     if not files:
         warning("no cloned files found")
         return
 
-    print("\n\033[96m ════════════════════════════════════════════\033[0m")
-    print("\033[96m 📂 CLONED FILES\033[0m")
-    print("\033[96m ════════════════════════════════════════════\033[0m")
+    print("\n\033[92m ════════════════════════════════════════════\033[0m")
+    print("\033[92m 📂 CLONED FILES\033[0m")
+    print("\033[92m ════════════════════════════════════════════\033[0m")
     for f in files:
         path = os.path.join(output_dir, f)
         size = os.path.getsize(path)
         print(f" 📄 {f} ({size:,} bytes)")
     print(f"\n 📂 folder: {output_dir}")
 
+# ============================================================
+# MAIN MENU
+# ============================================================
 def main():
-    show_banner()
-    print("\033[93m")
-    print(" ⚠️ website cloner tool")
+    show_hacker_banner()
+    print("\033[92m")
+    print(" ⚠️ website cloner tool | hacker edition")
     print(" ⚠️ saves page to downloads/copy_tools/")
-    print(" ⚠️ developer not responsible for misuse")
+    print(" ⚠️ use responsibly")
     print("\033[0m")
 
-    print("\n\033[96m 📌 CHOOSE FEATURE:\033[0m")
-    print(" \033[94m1\033[0m Clone Page (HTML + optional CSS)")
-    print(" \033[94m2\033[0m Get Metadata (title, desc, stats)")
-    print(" \033[94m3\033[0m Preview Page (see first 20 lines)")
-    print(" \033[94m4\033[0m Batch Clone (multiple URLs)")
-    print(" \033[94m5\033[0m View Cloned Files")
-    print(" \033[91m6\033[0m Exit")
+    print("\n\033[92m 📌 CHOOSE FEATURE:\033[0m")
+    print(" \033[92m1\033[0m  Clone Page (HTML + optional CSS)")
+    print(" \033[92m2\033[0m  Get Metadata (title, desc, stats)")
+    print(" \033[92m3\033[0m  View Source Code")
+    print(" \033[92m4\033[0m  Download Image")
+    print(" \033[92m5\033[0m  Extract Links")
+    print(" \033[92m6\033[0m  Check HTTP Status")
+    print(" \033[92m7\033[0m  WHOIS Lookup")
+    print(" \033[92m8\033[0m  Preview Page (first 20 lines)")
+    print(" \033[92m9\033[0m  Batch Clone (multiple URLs)")
+    print(" \033[92m10\033[0m View Cloned Files")
+    print(" \033[91m11\033[0m Exit")
 
-    choice = input("\n ➜ select (1-6): ").strip()
+    choice = input("\n ➜ select (1-11): ").strip()
 
     if choice == '1':
         url = input(" enter url: ").strip()
@@ -250,46 +430,85 @@ def main():
             url = 'https://' + url
         css_opt = input(" include CSS? (y/n): ").strip().lower()
         include_css = css_opt == 'y'
-        print("\n \033[96m⏳ cloning...\033[0m\n")
+        print("\n \033[92m⏳ cloning...\033[0m\n")
         result = clone_page(url, include_css)
 
-        print("\n\033[96m ════════════════════════════════════════════\033[0m")
-        print("\033[96m 📋 CLONE REPORT\033[0m")
-        print("\033[96m ════════════════════════════════════════════\033[0m")
+        print("\n\033[92m ════════════════════════════════════════════\033[0m")
+        print("\033[92m 📋 CLONE REPORT\033[0m")
+        print("\033[92m ════════════════════════════════════════════\033[0m")
         print(f"\n \033[92m✅ status\033[0m : success")
-        print(f" \033[94m📄 title\033[0m : {result['title']}")
-        print(f" \033[94m📁 saved\033[0m : {result['path']}")
-        print(f" \033[94m📦 size\033[0m : {result['size']:,} bytes")
+        print(f" \033[92m📄 title\033[0m : {result['title']}")
+        print(f" \033[92m📁 saved\033[0m : {result['path']}")
+        print(f" \033[92m📦 size\033[0m : {result['size']:,} bytes")
         print(f"\n 📂 check: {get_downloads_path()}/COPY_TOOLS/")
 
     elif choice == '2':
         url = input(" enter url: ").strip()
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'https://' + url
-        print("\n \033[96m⏳ analyzing...\033[0m\n")
+        print("\n \033[92m⏳ analyzing...\033[0m\n")
         meta = get_metadata(url)
 
-        print("\n\033[96m ════════════════════════════════════════════\033[0m")
-        print("\033[96m 📋 PAGE METADATA\033[0m")
-        print("\033[96m ════════════════════════════════════════════\033[0m")
-        print(f"\n \033[94m🔗 url\033[0m : {meta['url']}")
-        print(f" \033[94m📄 title\033[0m : {meta['title']}")
-        print(f" \033[94m📝 desc\033[0m : {meta['description']}")
-        print(f" \033[94m🏷️ keywords\033[0m : {meta['keywords']}")
-        print(f" \033[94m🔗 links\033[0m : {meta['links']}")
-        print(f" \033[94m🖼️ images\033[0m : {meta['images']}")
-        print(f" \033[94m📜 scripts\033[0m : {meta['scripts']}")
-        print(f" \033[94m🎨 css\033[0m : {meta['css']}")
-        print(f" \033[94m📦 size\033[0m : {meta['size']:,} bytes")
+        print("\n\033[92m ════════════════════════════════════════════\033[0m")
+        print("\033[92m 📋 PAGE METADATA\033[0m")
+        print("\033[92m ════════════════════════════════════════════\033[0m")
+        print(f"\n \033[92m🔗 url\033[0m : {meta['url']}")
+        print(f" \033[92m📄 title\033[0m : {meta['title']}")
+        print(f" \033[92m📝 desc\033[0m : {meta['description']}")
+        print(f" \033[92m🏷️ keywords\033[0m : {meta['keywords']}")
+        print(f" \033[92m🔗 links\033[0m : {meta['links']}")
+        print(f" \033[92m🖼️ images\033[0m : {meta['images']}")
+        print(f" \033[92m📜 scripts\033[0m : {meta['scripts']}")
+        print(f" \033[92m🎨 css\033[0m : {meta['css']}")
+        print(f" \033[92m📦 size\033[0m : {meta['size']:,} bytes")
 
     elif choice == '3':
         url = input(" enter url: ").strip()
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'https://' + url
-        print("\n \033[96m⏳ loading preview...\033[0m\n")
-        preview_page(url)
+        print("\n \033[92m⏳ fetching source...\033[0m\n")
+        view_source(url)
 
     elif choice == '4':
+        url = input(" enter image URL: ").strip()
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        print("\n \033[92m⏳ downloading...\033[0m\n")
+        result = download_image(url)
+        print("\n\033[92m ════════════════════════════════════════════\033[0m")
+        print("\033[92m 📋 DOWNLOAD REPORT\033[0m")
+        print("\033[92m ════════════════════════════════════════════\033[0m")
+        print(f"\n \033[92m✅ status\033[0m : success")
+        print(f" \033[92m📁 saved\033[0m : {result['path']}")
+        print(f" \033[92m📦 size\033[0m : {result['size']:,} bytes")
+
+    elif choice == '5':
+        url = input(" enter url: ").strip()
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        print("\n \033[92m⏳ extracting links...\033[0m\n")
+        extract_links(url)
+
+    elif choice == '6':
+        url = input(" enter url: ").strip()
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        print("\n \033[92m⏳ checking status...\033[0m\n")
+        check_status(url)
+
+    elif choice == '7':
+        domain = input(" enter domain (example.com): ").strip()
+        print("\n \033[92m⏳ performing WHOIS lookup...\033[0m\n")
+        whois_lookup(domain)
+
+    elif choice == '8':
+        url = input(" enter url: ").strip()
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        print("\n \033[92m⏳ loading preview...\033[0m\n")
+        preview_page(url)
+
+    elif choice == '9':
         print(" enter URLs (one per line, empty line to finish):")
         urls = []
         while True:
@@ -304,17 +523,17 @@ def main():
             include_css = css_opt == 'y'
             batch_clone(urls, include_css)
 
-    elif choice == '5':
+    elif choice == '10':
         list_cloned_files()
 
-    elif choice == '6':
-        print("\n\033[92m copy. save. conquer. 🔥\033[0m")
+    elif choice == '11':
+        print("\n\033[92m copy. save. conquer. 🔥 | hack the planet 🌍\033[0m")
         sys.exit(0)
 
     else:
         error("invalid choice")
 
-    input("\n\033[96m press enter to continue...\033[0m")
+    input("\n\033[92m press enter to continue...\033[0m")
     main()
 
 if __name__ == '__main__':
