@@ -1,0 +1,326 @@
+#!/usr/bin/env python3
+# ============================================================
+#  COPY TOOLS v1.0 - MULTI FEATURE CLONER
+#  Created by : egaaX official
+#  "copy. save. conquer." 🔥
+# ============================================================
+
+import os
+import sys
+import time
+import requests
+import re
+import json
+from datetime import datetime
+from urllib.parse import urljoin, urlparse
+
+VERSION = '1.0'
+AUTHOR = 'egaaX official'
+
+def clear():
+    os.system('clear' if os.name == 'posix' else 'cls')
+
+def loading_animation(text, duration=0.8):
+    chars = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
+    end_time = time.time() + duration
+    i = 0
+    while time.time() < end_time:
+        sys.stdout.write(f'\r \033[96m[{chars[i % len(chars)]}] {text}\033[0m')
+        sys.stdout.flush()
+        time.sleep(0.08)
+        i += 1
+    sys.stdout.write(f'\r \033[92m[✓] {text}\033[0m\n')
+
+def progress_bar(current, total, label='processing'):
+    bar_length = 25
+    filled = int(bar_length * current / total)
+    bar = '█' * filled + '░' * (bar_length - filled)
+    percent = round(current / total * 100, 1)
+    sys.stdout.write(f'\r \033[96m[{bar}] {percent}% - {label}\033[0m')
+    sys.stdout.flush()
+
+def loading(text):
+    print(f" \033[92m• {text}\033[0m")
+
+def error(text):
+    print(f" \033[91m• {text}\033[0m")
+
+def success(text):
+    print(f" \033[92m• {text}\033[0m")
+
+def warning(text):
+    print(f" \033[93m• {text}\033[0m")
+
+def info(text):
+    print(f" \033[94m• {text}\033[0m")
+
+def divider():
+    print(" " + "-" * 50)
+
+def show_banner():
+    clear()
+    print("""
+\033[96m
+   ██████╗ ██████╗ ██████╗ ██╗   ██╗
+  ██╔════╝██╔═══██╗██╔══██╗╚██╗ ██╔╝
+  ██║     ██║   ██║██████╔╝ ╚████╔╝
+  ██║     ██║   ██║██╔═══╝   ╚██╔╝
+  ╚██████╗╚██████╔╝██║        ██║
+   ╚═════╝ ╚═════╝ ╚═╝        ╚═╝
+
+   ████████╗ ██████╗  ██████╗ ██╗     ███████╗
+   ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔════╝
+      ██║   ██║   ██║██║   ██║██║     ███████╗
+      ██║   ██║   ██║██║   ██║██║     ╚════██║
+      ██║   ╚██████╔╝╚██████╔╝███████╗███████║
+      ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚══════╝
+\033[0m
+\033[93m
+  ──────────────────────────────────────────────
+  COPY TOOLS v1.0 | multi feature cloner
+  Created by : egaaX official
+  "copy. save. conquer." 🔥
+  ──────────────────────────────────────────────
+\033[0m
+""")
+
+def get_downloads_path():
+    paths = [
+        '/storage/emulated/0/Download',
+        '/sdcard/Download',
+        '/storage/emulated/0/Downloads'
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            return p
+    return os.path.expanduser('~/downloads')
+
+def clone_page(url, include_css=True):
+    loading_animation("initializing cloner", 0.5)
+    loading_animation(f"fetching: {url}", 0.6)
+    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
+    response = requests.get(url, headers=headers, timeout=15)
+    response.raise_for_status()
+    html = response.text
+    base_url = response.url
+
+    if include_css:
+        loading_animation("embedding CSS resources", 0.5)
+        css_links = re.findall(r'<link[^>]*href=[\'"]([^\'"]+\.css)[\'"][^>]*>', html, re.IGNORECASE)
+        for css_url in css_links[:3]:
+            try:
+                full_css_url = urljoin(base_url, css_url)
+                css_response = requests.get(full_css_url, headers=headers, timeout=5)
+                if css_response.status_code == 200:
+                    html = html.replace(css_url, 'data:text/css;base64,' + css_response.content[:1000].decode('utf-8'))
+            except:
+                pass
+
+    title_match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
+    title = title_match.group(1).strip() if title_match else 'cloned_page'
+    filename = re.sub(r'[^a-zA-Z0-9]', '_', title)[:50] or 'cloned_page'
+
+    download_path = get_downloads_path()
+    output_dir = os.path.join(download_path, 'COPY_TOOLS')
+    os.makedirs(output_dir, exist_ok=True)
+
+    html_file = os.path.join(output_dir, f'{filename}.html')
+    with open(html_file, 'w', encoding='utf-8') as f:
+        f.write(html)
+
+    return {
+        'success': True,
+        'path': html_file,
+        'title': title,
+        'size': len(html),
+        'filename': filename
+    }
+
+def get_metadata(url):
+    loading_animation("analyzing page metadata", 0.6)
+    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+    html = response.text
+
+    title = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
+    title = title.group(1).strip() if title else 'N/A'
+
+    desc = re.search(r'<meta[^>]*name=[\'"]description[\'"][^>]*content=[\'"]([^\'"]+)[\'"]', html, re.IGNORECASE)
+    desc = desc.group(1).strip() if desc else 'N/A'
+
+    keywords = re.search(r'<meta[^>]*name=[\'"]keywords[\'"][^>]*content=[\'"]([^\'"]+)[\'"]', html, re.IGNORECASE)
+    keywords = keywords.group(1).strip() if keywords else 'N/A'
+
+    links_count = len(re.findall(r'<a[^>]*href=[\'"][^\'"]+[\'"]', html))
+    images_count = len(re.findall(r'<img[^>]*src=[\'"][^\'"]+[\'"]', html))
+    scripts_count = len(re.findall(r'<script[^>]*src=[\'"][^\'"]+[\'"]', html))
+    css_count = len(re.findall(r'<link[^>]*rel=[\'"]stylesheet[\'"][^>]*href=[\'"][^\'"]+[\'"]', html))
+
+    return {
+        'url': url,
+        'title': title,
+        'description': desc,
+        'keywords': keywords,
+        'links': links_count,
+        'images': images_count,
+        'scripts': scripts_count,
+        'css': css_count,
+        'size': len(html)
+    }
+
+def preview_page(url):
+    loading_animation("fetching page preview", 0.5)
+    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+    html = response.text[:2000]
+
+    print("\n\033[96m ════════════════════════════════════════════\033[0m")
+    print("\033[96m 📄 PAGE PREVIEW (first 20 lines)\033[0m")
+    print("\033[96m ════════════════════════════════════════════\033[0m")
+    lines = html.split('\n')[:20]
+    for i, line in enumerate(lines, 1):
+        clean = line.strip()[:80]
+        if clean:
+            print(f" {i:2}. {clean}")
+    print(f"\n \033[94m📦 total size\033[0m: {len(html):,} bytes (first 2kb shown)")
+
+def batch_clone(urls, include_css=True):
+    results = []
+    total = len(urls)
+    for i, url in enumerate(urls, 1):
+        print()
+        loading(f"cloning {i}/{total}: {url}")
+        try:
+            result = clone_page(url, include_css)
+            results.append({'url': url, 'status': '✅', 'file': result['filename']})
+        except Exception as e:
+            results.append({'url': url, 'status': '❌', 'file': str(e)})
+
+    print("\n\033[96m ════════════════════════════════════════════\033[0m")
+    print("\033[96m 📋 BATCH REPORT\033[0m")
+    print("\033[96m ════════════════════════════════════════════\033[0m")
+    for r in results:
+        print(f" {r['status']} {r['url']} → {r['file']}")
+    return results
+
+def list_cloned_files():
+    download_path = get_downloads_path()
+    output_dir = os.path.join(download_path, 'COPY_TOOLS')
+    if not os.path.exists(output_dir):
+        warning("no cloned files found")
+        return
+
+    files = [f for f in os.listdir(output_dir) if f.endswith('.html')]
+    if not files:
+        warning("no cloned files found")
+        return
+
+    print("\n\033[96m ════════════════════════════════════════════\033[0m")
+    print("\033[96m 📂 CLONED FILES\033[0m")
+    print("\033[96m ════════════════════════════════════════════\033[0m")
+    for f in files:
+        path = os.path.join(output_dir, f)
+        size = os.path.getsize(path)
+        print(f" 📄 {f} ({size:,} bytes)")
+    print(f"\n 📂 folder: {output_dir}")
+
+def main():
+    show_banner()
+    print("\033[93m")
+    print(" ⚠️ website cloner tool")
+    print(" ⚠️ saves page to downloads/copy_tools/")
+    print(" ⚠️ developer not responsible for misuse")
+    print("\033[0m")
+
+    print("\n\033[96m 📌 CHOOSE FEATURE:\033[0m")
+    print(" \033[94m1\033[0m Clone Page (HTML + optional CSS)")
+    print(" \033[94m2\033[0m Get Metadata (title, desc, stats)")
+    print(" \033[94m3\033[0m Preview Page (see first 20 lines)")
+    print(" \033[94m4\033[0m Batch Clone (multiple URLs)")
+    print(" \033[94m5\033[0m View Cloned Files")
+    print(" \033[91m6\033[0m Exit")
+
+    choice = input("\n ➜ select (1-6): ").strip()
+
+    if choice == '1':
+        url = input(" enter url: ").strip()
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        css_opt = input(" include CSS? (y/n): ").strip().lower()
+        include_css = css_opt == 'y'
+        print("\n \033[96m⏳ cloning...\033[0m\n")
+        result = clone_page(url, include_css)
+
+        print("\n\033[96m ════════════════════════════════════════════\033[0m")
+        print("\033[96m 📋 CLONE REPORT\033[0m")
+        print("\033[96m ════════════════════════════════════════════\033[0m")
+        print(f"\n \033[92m✅ status\033[0m : success")
+        print(f" \033[94m📄 title\033[0m : {result['title']}")
+        print(f" \033[94m📁 saved\033[0m : {result['path']}")
+        print(f" \033[94m📦 size\033[0m : {result['size']:,} bytes")
+        print(f"\n 📂 check: {get_downloads_path()}/COPY_TOOLS/")
+
+    elif choice == '2':
+        url = input(" enter url: ").strip()
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        print("\n \033[96m⏳ analyzing...\033[0m\n")
+        meta = get_metadata(url)
+
+        print("\n\033[96m ════════════════════════════════════════════\033[0m")
+        print("\033[96m 📋 PAGE METADATA\033[0m")
+        print("\033[96m ════════════════════════════════════════════\033[0m")
+        print(f"\n \033[94m🔗 url\033[0m : {meta['url']}")
+        print(f" \033[94m📄 title\033[0m : {meta['title']}")
+        print(f" \033[94m📝 desc\033[0m : {meta['description']}")
+        print(f" \033[94m🏷️ keywords\033[0m : {meta['keywords']}")
+        print(f" \033[94m🔗 links\033[0m : {meta['links']}")
+        print(f" \033[94m🖼️ images\033[0m : {meta['images']}")
+        print(f" \033[94m📜 scripts\033[0m : {meta['scripts']}")
+        print(f" \033[94m🎨 css\033[0m : {meta['css']}")
+        print(f" \033[94m📦 size\033[0m : {meta['size']:,} bytes")
+
+    elif choice == '3':
+        url = input(" enter url: ").strip()
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        print("\n \033[96m⏳ loading preview...\033[0m\n")
+        preview_page(url)
+
+    elif choice == '4':
+        print(" enter URLs (one per line, empty line to finish):")
+        urls = []
+        while True:
+            url = input(" ➜ ").strip()
+            if not url:
+                break
+            if not url.startswith('http://') and not url.startswith('https://'):
+                url = 'https://' + url
+            urls.append(url)
+        if urls:
+            css_opt = input(" include CSS? (y/n): ").strip().lower()
+            include_css = css_opt == 'y'
+            batch_clone(urls, include_css)
+
+    elif choice == '5':
+        list_cloned_files()
+
+    elif choice == '6':
+        print("\n\033[92m copy. save. conquer. 🔥\033[0m")
+        sys.exit(0)
+
+    else:
+        error("invalid choice")
+
+    input("\n\033[96m press enter to continue...\033[0m")
+    main()
+
+if __name__ == '__main__':
+    try:
+        import requests
+    except ImportError:
+        print("\033[91m [ ! ] requests not installed. run: pip install requests\033[0m")
+        sys.exit(1)
+    main()
