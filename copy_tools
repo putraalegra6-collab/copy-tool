@@ -453,7 +453,7 @@ def main():
 
     print(f"\n{CYAN}  📌 CHOOSE FEATURE:{RESET}")
     print(f"  {GREEN}1{WHITE}  Clone Page            {CYAN}|{WHITE}  {GREEN}6{WHITE}  Batch Clone{RESET}")
-    print(f"  {GREEN}2{WHITE}  Download Images/Icons  {CYAN}|{WHITE}  {GREEN}7{WHITE}  View Files{RESET}")
+    print(f"  {GREEN}2{WHITE}  Images web            {CYAN}|{WHITE}  {GREEN}7{WHITE}  View Files{RESET}")
     print(f"  {GREEN}3{WHITE}  Check HTTP Status     {CYAN}|{WHITE}  {GREEN}8{WHITE}  Extract Links{RESET}")
     print(f"  {GREEN}4{WHITE}  Get Metadata          {CYAN}|{WHITE}  {GREEN}9{WHITE}  Check SSL Certificate{RESET}")
     print(f"  {GREEN}5{WHITE}  Preview Page          {CYAN}|{WHITE}  {RED}10{WHITE} Exit{RESET}")
