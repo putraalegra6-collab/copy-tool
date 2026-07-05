@@ -17,7 +17,7 @@ import threading
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
-VERSION = '9.4'
+VERSION = '0.1'
 AUTHOR = 'egaaX official'
 
 # ============================================================
