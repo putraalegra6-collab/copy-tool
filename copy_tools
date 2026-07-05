@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-#  COPY TOOLS v8.0 - FULL EDITION
+#  COPY TOOLS v8.1 - FINAL FIX
 #  Created by : egaaX official
 #  "copy. save. conquer."
 # ============================================================
@@ -17,7 +17,7 @@ import threading
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
-VERSION = '8.0'
+VERSION = '8.1'
 AUTHOR = 'egaaX official'
 
 # ============================================================
@@ -153,17 +153,23 @@ def clone_page(url, include_css=True):
     }
 
 # ============================================================
-# TOOL 2: DOWNLOAD IMAGE/IKON DARI WEBSITE
+# TOOL 2: DOWNLOAD IMAGES (FIX)
 # ============================================================
 def download_images_from_website(url):
     loading_animation("scanning for images", 0.5)
     headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
-    response = requests.get(url, headers=headers, timeout=15)
-    response.raise_for_status()
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+    except Exception as e:
+        error(f"Failed to fetch URL: {e}")
+        input(f"\n{YELLOW}  press enter to continue...{RESET}")
+        return
+    
     html = response.text
     base_url = response.url
 
-    # Cari semua gambar (img, icon, favicon)
+    # Cari semua gambar
     img_patterns = [
         r'<img[^>]*src=[\'"]([^\'"]+)[\'"]',
         r'<link[^>]*rel=[\'"]icon[\'"][^>]*href=[\'"]([^\'"]+)[\'"]',
@@ -175,13 +181,14 @@ def download_images_from_website(url):
         matches = re.findall(pattern, html, re.IGNORECASE)
         for img in matches:
             full_url = urljoin(base_url, img)
-            all_images.append(full_url)
+            if full_url.startswith('http'):
+                all_images.append(full_url)
     
-    # Hapus duplikat
     unique_images = list(set(all_images))
     
     if not unique_images:
         warning("no images found on this page")
+        input(f"\n{YELLOW}  press enter to continue...{RESET}")
         return
     
     download_path = get_downloads_path()
@@ -193,30 +200,32 @@ def download_images_from_website(url):
     print(f"{CYAN}════════════════════════════════════════════{RESET}")
     
     downloaded = 0
-    for i, img_url in enumerate(unique_images[:20], 1):  # Max 20 images
+    for i, img_url in enumerate(unique_images[:20], 1):
         try:
             img_response = requests.get(img_url, headers=headers, timeout=10)
             if img_response.status_code == 200:
-                # Ambil nama file
-                filename = img_url.split('/')[-1].split('?')[0]
-                if not filename or '.' not in filename:
-                    filename = f'image_{i}.jpg'
-                
-                # Cek tipe konten
                 content_type = img_response.headers.get('content-type', '')
                 if 'image' in content_type:
+                    filename = img_url.split('/')[-1].split('?')[0]
+                    if not filename or '.' not in filename:
+                        ext = content_type.split('/')[-1]
+                        filename = f'image_{i}.{ext}'
+                    
                     filepath = os.path.join(output_dir, filename)
                     with open(filepath, 'wb') as f:
                         f.write(img_response.content)
                     downloaded += 1
                     print(f" {GREEN}✅{WHITE} {filename} ({len(img_response.content):,} bytes){RESET}")
                 else:
-                    print(f" {YELLOW}⚠️{WHITE} {filename} - not an image{RESET}")
+                    print(f" {YELLOW}⚠️{WHITE} {filename} - skipped (not image){RESET}")
+            else:
+                print(f" {RED}❌{WHITE} failed: {img_url[:50]}... (status {img_response.status_code}){RESET}")
         except Exception as e:
-            print(f" {RED}❌{WHITE} failed: {img_url[:50]}...{RESET}")
+            print(f" {RED}❌{WHITE} error: {img_url[:50]}...{RESET}")
     
     print(f"\n{GREEN}✅ Downloaded {downloaded} images to:{RESET}")
     print(f"{WHITE}  {output_dir}{RESET}")
+    input(f"\n{YELLOW}  press enter to continue...{RESET}")
 
 # ============================================================
 # TOOL 3: CHECK HTTP STATUS
@@ -247,6 +256,7 @@ def check_status(url):
         print(f" {BLUE}⏱️  Time{RESET}   : {WHITE}{response.elapsed.total_seconds():.2f}s{RESET}")
     except Exception as e:
         error(f"Failed: {e}")
+    input(f"\n{YELLOW}  press enter to continue...{RESET}")
 
 # ============================================================
 # TOOL 4: GET METADATA
@@ -278,6 +288,7 @@ def get_metadata(url):
     print(f" {BLUE}🖼️ Images{RESET}  : {WHITE}{images_count}{RESET}")
     print(f" {BLUE}📜 Scripts{RESET} : {WHITE}{scripts_count}{RESET}")
     print(f" {BLUE}📦 Size{RESET}    : {WHITE}{len(html):,} bytes{RESET}")
+    input(f"\n{YELLOW}  press enter to continue...{RESET}")
 
 # ============================================================
 # TOOL 5: PREVIEW PAGE
@@ -297,6 +308,7 @@ def preview_page(url):
         clean = line.strip()[:60]
         if clean:
             print(f" {WHITE}{i:2}. {clean}{RESET}")
+    input(f"\n{YELLOW}  press enter to continue...{RESET}")
 
 # ============================================================
 # TOOL 6: BATCH CLONE
@@ -318,6 +330,7 @@ def batch_clone(urls, include_css=True):
     print(f"{CYAN}════════════════════════════════════════════{RESET}")
     for r in results:
         print(f" {GREEN if r['status'] == '✅' else RED}{r['status']}{RESET} {WHITE}{r['url']}{RESET} → {PURPLE}{r['file']}{RESET}")
+    input(f"\n{YELLOW}  press enter to continue...{RESET}")
 
 # ============================================================
 # TOOL 7: VIEW CLONED FILES
@@ -327,11 +340,13 @@ def list_cloned_files():
     output_dir = os.path.join(download_path, 'BONGKAR_WEB')
     if not os.path.exists(output_dir):
         warning("no files found in BONGKAR_WEB")
+        input(f"\n{YELLOW}  press enter to continue...{RESET}")
         return
 
     files = os.listdir(output_dir)
     if not files:
         warning("no files found in BONGKAR_WEB")
+        input(f"\n{YELLOW}  press enter to continue...{RESET}")
         return
 
     print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
@@ -342,6 +357,7 @@ def list_cloned_files():
         size = os.path.getsize(path)
         print(f" {WHITE}📄 {f} ({size:,} bytes){RESET}")
     print(f"\n {BLUE}📂 folder:{RESET} {WHITE}{output_dir}{RESET}")
+    input(f"\n{YELLOW}  press enter to continue...{RESET}")
 
 # ============================================================
 # TOOL 8: EXTRACT LINKS
@@ -361,6 +377,7 @@ def extract_links(url):
     print(f"{CYAN}════════════════════════════════════════════{RESET}")
     for i, link in enumerate(unique_links[:30], 1):
         print(f" {WHITE}{i:2}. {link[:60]}{RESET}")
+    input(f"\n{YELLOW}  press enter to continue...{RESET}")
 
 # ============================================================
 # TOOL 9: CHECK SSL CERTIFICATE
@@ -385,6 +402,7 @@ def check_ssl(domain):
         print(f" {GREEN}✅ Valid{RESET}      : {WHITE}{'Yes' if cert.get('notAfter') else 'No'}{RESET}")
     except Exception as e:
         error(f"SSL check failed: {e}")
+    input(f"\n{YELLOW}  press enter to continue...{RESET}")
 
 # ============================================================
 # MAIN MENU
@@ -419,6 +437,7 @@ def main():
         print(f"  {BLUE}📄 title{RESET} : {WHITE}{result['title']}{RESET}")
         print(f"  {BLUE}📁 saved{RESET} : {WHITE}{result['path']}{RESET}")
         print(f"  {BLUE}📦 size{RESET}  : {WHITE}{result['size']:,} bytes{RESET}")
+        input(f"\n{YELLOW}  press enter to continue...{RESET}")
 
     elif choice == '2':
         url = input(f"  {WHITE}enter url: {RESET}").strip()
@@ -484,9 +503,8 @@ def main():
 
     else:
         error("invalid choice")
-
-    input(f"\n{YELLOW}  press enter to continue...{RESET}")
-    main()
+        input(f"\n{YELLOW}  press enter to continue...{RESET}")
+        main()
 
 if __name__ == '__main__':
     try:
