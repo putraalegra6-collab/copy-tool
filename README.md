@@ -34,7 +34,7 @@ python copy_tools.py
 ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝
 
 JIKA HABIS KELUAR DARI TERMUX LALU HILANG
-CUKIP JALANKAN COMMAND BERIKUT:)
+CUKUP JALANKAN COMMAND BERIKUT:)
 
 cd ~/copy-tool
 git pull
