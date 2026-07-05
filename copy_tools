@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-#  COPY TOOLS v6.1 - WARNA EDITION
+#  COPY TOOLS v6.2 - FINAL FIX
 #  Created by : egaaX official
 #  "copy. save. conquer."
 # ============================================================
@@ -17,14 +17,14 @@ import threading
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
-VERSION = '6.1'
+VERSION = '6.2'
 AUTHOR = 'egaaX official'
 
 # ============================================================
-# WARNA (SELANG-SELING)
+# WARNA
 # ============================================================
 GREEN = '\033[92m'
-DARK = '\033[90m'      # hitam pekat / abu-abu tua
+DARK = '\033[90m'
 CYAN = '\033[96m'
 YELLOW = '\033[93m'
 WHITE = '\033[97m'
@@ -52,20 +52,21 @@ clock_thread.start()
 def show_banner():
     clear()
     hari, tanggal, jam = get_datetime()
+    # BANNER KECIL & RAPIH (MUAT DI HP)
     print(f"""
 {GREEN}  ██████╗ {DARK} ██████╗ {GREEN} ██████╗ {DARK} ██╗   ██╗
-{GREEN}  ██╔════╝ {DARK}██╔═══██╗{GREEN}██╔══██╗{DARK}╚██╗ ██╔╝
-{GREEN}  ██║     {DARK}██║   ██║{GREEN}██████╔╝{DARK} ╚████╔╝
-{GREEN}  ██║     {DARK}██║   ██║{GREEN}██╔═══╝{DARK}  ╚██╔╝
-{GREEN}  ╚██████╗{DARK}╚██████╔╝{GREEN}██║       {DARK} ██║
-{GREEN}   ╚═════╝ {DARK}╚═════╝ {GREEN}╚═╝       {DARK} ╚═╝
+{GREEN}  ██╔════╝ {DARK}██╔═══██╗{GREEN}██╔══██╗{DARK} ╚██╗ ██╔╝
+{GREEN}  ██║     {DARK}██║   ██║{GREEN}██████╔╝{DARK}    ╚████╔╝
+{GREEN}  ██║     {DARK}██║   ██║{GREEN}██╔═══╝{DARK}      ╚██╔╝
+{GREEN}  ╚██████╗{DARK}╚██████╔╝{GREEN}██║     {DARK}     ██║
+{GREEN}   ╚═════╝ {DARK}╚═════╝ {GREEN}╚═╝     {DARK}     ╚═╝
 
-{GREEN}  ████████╗ {DARK} ██████╗  {GREEN} ██████╗ {DARK} ██╗     {GREEN} ███████╗
+{GREEN}  ████████╗ {DARK} ██████╗  {GREEN}██████╗ {DARK}██╗     {GREEN}███████╗
 {GREEN}  ╚══██╔══╝{DARK}██╔═══██╗{GREEN}██╔═══██╗{DARK}██║     {GREEN}██╔════╝
 {GREEN}     ██║   {DARK}██║   ██║{GREEN}██║   ██║{DARK}██║     {GREEN}███████╗
 {GREEN}     ██║   {DARK}██║   ██║{GREEN}██║   ██║{DARK}██║     {GREEN}╚════██║
 {GREEN}     ██║   {DARK}╚██████╔╝{GREEN}╚██████╔╝{DARK}███████╗{GREEN}███████║
-{GREEN}     ╚═╝    {DARK}╚═════╝  {GREEN} ╚═════╝ {DARK} ╚══════╝{GREEN}╚══════╝
+{GREEN}     ╚═╝    {DARK}╚═════╝  {GREEN}╚═════╝ {DARK}╚══════╝{GREEN}╚══════╝
 {RESET}
 {WHITE}  Created by : {CYAN}{AUTHOR}{RESET}
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {CYAN}{jam}{RESET}
