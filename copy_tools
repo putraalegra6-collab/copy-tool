@@ -1,23 +1,16 @@
-#!/usr/bin/env python3
-# ============================================================
-#  COPY TOOLS vevek jule - hehe:)
-#  Created by : egaaX official
-#  "copy. save. conquer."
-# ============================================================
-
 import os
 import sys
 import time
 import requests
 import re
 import json
-import socket
-import ssl
+import hashlib
 import threading
 from datetime import datetime
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urldefrag
+from bs4 import BeautifulSoup
 
-VERSION = '0.1'
+VERSION = '2.0'
 AUTHOR = 'egaaX official'
 
 # ============================================================
@@ -42,70 +35,45 @@ def get_datetime():
     jam = now.strftime('%H:%M:%S')
     return hari, tanggal, jam
 
-def update_clock():
-    while True:
-        time.sleep(1)
-
-clock_thread = threading.Thread(target=update_clock, daemon=True)
-clock_thread.start()
-
 def show_banner():
     clear()
     hari, tanggal, jam = get_datetime()
     print(f"""
-{GREEN}
- ███████╗ ██████╗  █████╗  █████╗
- ██╔════╝██╔════╝ ██╔══██╗██╔══██╗
- █████╗  ██║  ███╗███████║███████║
- ██╔══╝  ██║   ██║██╔══██║██╔══██║
- ███████╗╚██████╔╝██║  ██║██║  ██║
- ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
+{RED}                ⢀⣀⡠⠤⠤⠤⠒⠒⠲⠤⠤⠤⣀⣀                 
+{RED}            ⣀⠤⢒⣉⣥⣶⣶⣿⣿⣿⣿⣿⣿⣿⣿⣷⣶⣦⣭⣑⠲⢄⡀            
+{RED}         ⡠⠔⣩⣴⣾⣿⠿⠟⠛⠉⠉       ⠉⠉⠛⠻⢿⣿⣷⣬⣑⠦⣀         
+{RED}      ⢀⡴⢊⣴⣿⡿⠟⠉     ⢀⣠⣤⣤⣤⣤⣤⣄     ⠈⠙⠻⣿⣷⣬⡓⢄       
+{RED}     ⡰⢋⣴⣿⠟⠉      ⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦      ⠈⠙⢿⣿⣦⠳⣄     
+{RED}   ⢀⠎⣴⣿⡿⠁        ⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇        ⠹⣿⣷⡌⢦    
+{RED}  ⢠⢋⣼⣿⠏ ⣀⣤⣤⣄⣀    ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇   ⢀⣀⣤⣤⣄⣀⠈⢻⣿⣆⢣⡀  
+{RED} ⢠⢇⣾⣿⠋⣶⡟⠛⠉⠉⠛⢿⣷⡆  ⢸⣿⡿⢿⣿⣿⣿⣿⣿⡿⢿⣿⠁  ⣶⣿⠟⠋⠉⠉⠛⣷⣆⢻⣿⣇⢣  
+{RED} ⡏⣸⣿⠇⣸⡯     ⠈⣿⣿⡇ ⣸⣿  ⢈⣻⣿⣏⠁ ⢀⣿⡀ ⢾⣿⡏     ⠠⣿⡄⢿⣿⡆⣆ 
+{RED}⢰⢰⣿⡿ ⢿⣷⣆⡀ ⢀⡤ ⢸⣿⣷ ⢹⣿⣷⣾⣿⠏ ⢿⣿⣾⣿⣿⠁⢰⣿⣿⠃ ⢄  ⣀⣲⣿⡇⠈⣿⣿⢸⡀
+{RED}⡞⣾⣿⠇ ⠈⠙⠿⠟⠛⠁   ⠻⢿⣧⣤⣤⠈⣽⣿⣷⣿⣿⣿⡏⢠⣤⣤⣾⡿⠋   ⠙⠛⠿⠟⠋⠁ ⣹⣿⡀⡇
+{RED}⡇⣿⣿  ⢠⣶⣶⣿⣿⣿⣷⣶⣾⣦⣤⡈⠛⠛⠓⣀⣙⠛⠘⢙⣡⡀⠛⠛⡋⢡⣤⣶⣷⣶⣿⣿⣿⣿⣶⣦⡀ ⢸⣿⡇⠇
+{RED}⡇⣿⣿  ⣿⣿⣿⠟⠋⠉⠉⠉⠛⠿⣿⣿⣿⣴⣾⡿⠟⢃⢀⡙⠻⣿⣷⣼⣿⣿⡿⠟⠛⠉⠉⠉⠙⠻⣿⣿⡇ ⣸⣿⡇⡇
+{RED}⣧⢿⣿⡆ ⣿⡟⠁     ⢀  ⠉⠉⠉⣡⣀⣼⣿⠰⣿⣆⣠⡈⠉⠉⠁ ⢠      ⠙⣿⣏ ⣼⣿⠁⡇
+{RED}⢸⠸⣿⣧ ⢿⡏      ⢈⡇⢀⣠⣾⣾⣿⣿⡿⠋ ⠻⣿⣿⣿⣶⣧⣄ ⣏       ⣿⡇⢀⣿⣿⢰⠃
+{RED} ⣆⢻⣿⡆⠘⣿⣇⣀   ⣀⣼⢁⣾⡿⠛⠉⠁       ⠉⠉⠻⣿⣧⠹⣅⡀   ⣀⣺⡿ ⣼⣿⠇⡏ 
+{RED} ⠘⡌⣿⣿⡄⠙⣿⣿⣦⣿⣶⣿⢃⣾⡏    ⠈⠶⣄ ⣴⠆    ⠈⢿⣦⢹⣷⣾⣷⣾⣿⡿⠁⣸⣿⡏⡴  
+{RED}  ⠹⡜⢿⣿⣄⠈⠻⠿⠿⠛⠃⣾⣿       ⣿⠐⡗      ⢸⣿⡆⠙⠻⠿⠿⠋ ⣼⣿⠟⡰⠁  
+{RED}   ⠘⢎⢻⣿⣦⡀    ⠻⣿⣧⣀   ⢀⣸⣿⢈⣿⡂   ⢀⣀⣿⣿⠇    ⣠⣾⣿⢏⡜⠁   
+{RED}    ⠈⠳⡙⢿⣿⣦⡀   ⠈⠻⣿⣷⣿⣶⣿⣿⠇ ⢿⣿⣷⣾⣷⣾⡿⠟    ⣠⣾⣿⠟⡡⠊     
+{RED}      ⠈⠢⣝⠿⣿⣶⣄⡀  ⠈⠛⠿⠛⠛⠉   ⠙⠛⠻⠟⠋   ⣀⣤⣾⣿⠟⡡⠚       
+{RED}        ⠈⠓⢬⡛⠿⣿⣷⣦⣤⣀⡀         ⣀⣠⣤⣶⣿⣿⠟⣋⠕⠊         
+{RED}           ⠈⠑⠢⢍⣛⠻⠿⣿⣿⣿⣶⣷⣾⣶⣿⣿⣿⡿⠿⠟⣋⠭⠖⠈            
+{RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
-████████╗ ██████╗  ██████╗ ██╗     ███████╗
-╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔════╝
-   ██║   ██║   ██║██║   ██║██║     ███████╗
-   ██║   ██║   ██║██║   ██║██║     ╚════██║
-   ██║   ╚██████╔╝╚██████╔╝███████╗███████║
-   ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚══════╝
-
-██╗    ██╗███████╗██████╗ ███████╗██╗████████╗███████╗
-██║    ██║██╔════╝██╔══██╗██╔════╝██║╚══██╔══╝██╔════╝
-██║ █╗ ██║█████╗  ██████╔╝███████╗██║   ██║   █████╗
-██║███╗██║██╔══╝  ██╔══██╗╚════██║██║   ██║   ██╔══╝
-╚███╔███╔╝███████╗██████╔╝███████║██║   ██║   ███████╗
- ╚══╝╚══╝ ╚══════╝╚═════╝ ╚══════╝╚═╝   ╚═╝   ╚══════╝
-{RESET}
-{WHITE}  Created by : {CYAN}{AUTHOR}{RESET}
+{WHITE}╔══════════════════════════════════════════════════════════════╗
+{WHITE}║  {GREEN}COPY TOOLS v2.0 - DEEP CLONE EDITION{WHITE}                    ║
+{WHITE}║  {CYAN}Created by : egaaX official{WHITE}                              ║
+{WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
+{WHITE}╠══════════════════════════════════════════════════════════════╣
+{WHITE}║  {CYAN}📦 Clone: HTML | CSS | JS | Images | Fonts | API{WHITE}        ║
+{WHITE}║  {CYAN}🔍 Scan : Subdomains | Emails | Social Media{WHITE}            ║
+{WHITE}╚══════════════════════════════════════════════════════════════╝
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
-{GREEN}
-  ──────────────────────────────────────────────
-  COPY TOOLS | multi feature cloner
-  "copy. save. conquer." 🔥
-  ──────────────────────────────────────────────
-{RESET}
 """)
-
-def loading_animation(text, duration=0.8):
-    chars = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
-    end_time = time.time() + duration
-    i = 0
-    while time.time() < end_time:
-        sys.stdout.write(f'\r {GREEN}[{chars[i % len(chars)]}] {WHITE}{text}{RESET}')
-        sys.stdout.flush()
-        time.sleep(0.08)
-        i += 1
-    sys.stdout.write(f'\r {GREEN}[✓] {WHITE}{text}{RESET}\n')
-
-def loading_animasi_gerak(text, duration=1.5):
-    chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-    end_time = time.time() + duration
-    i = 0
-    while time.time() < end_time:
-        sys.stdout.write(f'\r {CYAN}[{chars[i % len(chars)]}] {WHITE}{text}{RESET}')
-        sys.stdout.flush()
-        time.sleep(0.06)
-        i += 1
-    sys.stdout.write(f'\r {GREEN}[✓] {WHITE}{text}{RESET}\n')
 
 def loading(text):
     print(f" {GREEN}• {WHITE}{text}{RESET}")
@@ -126,319 +94,421 @@ def get_downloads_path():
     paths = [
         '/storage/emulated/0/Download',
         '/sdcard/Download',
-        '/storage/emulated/0/Downloads'
+        '/storage/emulated/0/Downloads',
+        os.path.expanduser('~/Downloads'),
+        os.path.expanduser('~/downloads')
     ]
     for p in paths:
         if os.path.exists(p):
             return p
-    return os.path.expanduser('~/downloads')
+    return os.getcwd()
 
 # ============================================================
-# TOOL 1: CLONE PAGE
+# DEEP CLONE ENGINE
 # ============================================================
-def clone_page(url, include_css=True):
-    loading_animation("initializing cloner", 0.5)
-    loading_animation(f"fetching: {url}", 0.6)
-    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
-    response = requests.get(url, headers=headers, timeout=15)
-    response.raise_for_status()
-    html = response.text
-    base_url = response.url
-
-    if include_css:
-        loading_animation("embedding CSS resources", 0.5)
-        css_links = re.findall(r'<link[^>]*href=[\'"]([^\'"]+\.css)[\'"][^>]*>', html, re.IGNORECASE)
-        for css_url in css_links[:3]:
-            try:
-                full_css_url = urljoin(base_url, css_url)
-                css_response = requests.get(full_css_url, headers=headers, timeout=5)
-                if css_response.status_code == 200:
-                    html = html.replace(css_url, 'data:text/css;base64,' + css_response.content[:1000].decode('utf-8'))
-            except:
-                pass
-
-    title_match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
-    title = title_match.group(1).strip() if title_match else 'cloned_page'
-    filename = re.sub(r'[^a-zA-Z0-9]', '_', title)[:50] or 'cloned_page'
-
-    download_path = get_downloads_path()
-    output_dir = os.path.join(download_path, 'BONGKAR_WEB')
-    os.makedirs(output_dir, exist_ok=True)
-
-    html_file = os.path.join(output_dir, f'{filename}.html')
-    with open(html_file, 'w', encoding='utf-8') as f:
-        f.write(html)
-
-    return {
-        'success': True,
-        'path': html_file,
-        'title': title,
-        'size': len(html),
-        'filename': filename
-    }
-
-# ============================================================
-# TOOL 2: DOWNLOAD IMAGES
-# ============================================================
-def download_images_from_website(url):
-    loading_animasi_gerak("scanning for images", 0.8)
-    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
-    try:
-        response = requests.get(url, headers=headers, timeout=8)
-        response.raise_for_status()
-    except Exception as e:
-        error(f"Failed to fetch URL: {e}")
-        print(f"\n{YELLOW}  press Enter to continue...{RESET}")
-        input()
-        return
-    
-    html = response.text
-    base_url = response.url
-
-    img_patterns = [
-        r'<img[^>]*src=[\'"]([^\'"]+)[\'"]',
-        r'<link[^>]*rel=[\'"]icon[\'"][^>]*href=[\'"]([^\'"]+)[\'"]',
-        r'<link[^>]*rel=[\'"]apple-touch-icon[\'"][^>]*href=[\'"]([^\'"]+)[\'"]'
-    ]
-    
-    all_images = []
-    for pattern in img_patterns:
-        matches = re.findall(pattern, html, re.IGNORECASE)
-        for img in matches:
-            full_url = urljoin(base_url, img)
-            if full_url.startswith(('http://', 'https://')):
-                all_images.append(full_url)
-    
-    unique_images = list(set(all_images))
-    
-    if not unique_images:
-        warning("no images found on this page")
-        print(f"\n{YELLOW}  press Enter to continue...{RESET}")
-        input()
-        return
-    
-    download_path = get_downloads_path()
-    output_dir = os.path.join(download_path, 'BONGKAR_WEB')
-    os.makedirs(output_dir, exist_ok=True)
-    
-    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
-    print(f"{BLUE}📸 DOWNLOADING IMAGES ({len(unique_images)} found){RESET}")
-    print(f"{CYAN}════════════════════════════════════════════{RESET}")
-    
-    downloaded = 0
-    total = min(len(unique_images), 20)
-    for i, img_url in enumerate(unique_images[:20], 1):
-        loading_animasi_gerak(f"downloading image {i}/{total}", 0.5)
+class DeepClone:
+    def __init__(self, url, output_dir):
+        self.url = url
+        self.base_url = ''
+        self.output_dir = output_dir
+        self.downloaded = set()
+        self.api_endpoints = set()
+        self.emails = set()
+        self.social = set()
+        self.subdomains = set()
+        self.total_files = 0
+        self.total_size = 0
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+    def create_folders(self):
+        folders = ['css', 'js', 'images', 'fonts', 'api', 'data']
+        for f in folders:
+            os.makedirs(os.path.join(self.output_dir, f), exist_ok=True)
+            
+    def safe_request(self, url, timeout=30):
         try:
-            img_response = requests.get(img_url, headers=headers, timeout=5)
-            if img_response.status_code == 200:
-                content_type = img_response.headers.get('content-type', '')
-                if 'image' in content_type:
-                    filename = img_url.split('/')[-1].split('?')[0]
-                    if not filename or '.' not in filename:
-                        ext = content_type.split('/')[-1]
-                        filename = f'image_{i}.{ext}'
-                    
-                    filepath = os.path.join(output_dir, filename)
-                    with open(filepath, 'wb') as f:
-                        f.write(img_response.content)
-                    downloaded += 1
-                    print(f" {GREEN}✅{WHITE} {filename} ({len(img_response.content):,} bytes){RESET}")
-                else:
-                    print(f" {YELLOW}⚠️{WHITE} {filename} - skipped (not image){RESET}")
-            else:
-                print(f" {RED}❌{WHITE} failed: {img_url[:40]}... (status {img_response.status_code}){RESET}")
-        except Exception as e:
-            print(f" {RED}❌{WHITE} error: {img_url[:40]}...{RESET}")
+            res = requests.get(url, headers=self.headers, timeout=timeout, verify=False, allow_redirects=True)
+            return res if res.status_code == 200 else None
+        except:
+            return None
     
-    print(f"\n{GREEN}✅ Downloaded {downloaded} images to:{RESET}")
-    print(f"{WHITE}  {output_dir}{RESET}")
+    def download_file(self, url, folder, filename=None):
+        if url in self.downloaded:
+            return None
+        if url.startswith(('data:', 'blob:', 'javascript:')):
+            return None
+            
+        try:
+            if not filename:
+                parsed = urlparse(url)
+                filename = os.path.basename(parsed.path)
+                if not filename or '.' not in filename:
+                    ext = ''
+                    if 'css' in url.lower():
+                        ext = '.css'
+                    elif 'js' in url.lower():
+                        ext = '.js'
+                    elif any(x in url.lower() for x in ['.jpg', '.png', '.gif', '.svg', '.webp', '.ico']):
+                        ext = os.path.splitext(parsed.path)[1] or '.png'
+                    elif any(x in url.lower() for x in ['.woff', '.ttf', '.otf']):
+                        ext = os.path.splitext(parsed.path)[1] or '.woff'
+                    else:
+                        ext = '.html'
+                    filename = hashlib.md5(url.encode()).hexdigest()[:12] + ext
+            
+            filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+            filepath = os.path.join(folder, filename)
+            
+            if os.path.exists(filepath):
+                self.downloaded.add(url)
+                return filepath
+                
+            res = self.safe_request(url, timeout=20)
+            if res:
+                with open(filepath, 'wb') as f:
+                    f.write(res.content)
+                self.downloaded.add(url)
+                self.total_files += 1
+                self.total_size += len(res.content)
+                return filepath
+        except:
+            pass
+        return None
+    
+    def extract_apis(self, content):
+        apis = set()
+        patterns = [
+            r'fetch\s*\(\s*["\']([^"\']+)["\']',
+            r'axios\.[a-z]+\s*\(\s*["\']([^"\']+)["\']',
+            r'\.(?:get|post|put|delete|patch)\s*\(\s*["\']([^"\']+)["\']',
+            r'\/api\/[a-zA-Z0-9/_-]+',
+            r'https?://[^"\']+api[^"\']*',
+            r'graphql',
+            r'\/v[0-9]+\/',
+        ]
+        for pattern in patterns:
+            found = re.findall(pattern, content, re.IGNORECASE)
+            for f in found:
+                if f and not f.startswith(('data:', 'blob:', 'javascript:')):
+                    if f.startswith(('/', 'api', 'http', './', '../')):
+                        apis.add(f)
+        return apis
+    
+    def extract_emails(self, content):
+        pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        found = re.findall(pattern, content)
+        for f in found:
+            if not f.endswith(('.png', '.jpg', '.css', '.js')):
+                self.emails.add(f)
+    
+    def extract_social(self, content):
+        patterns = {
+            'instagram': r'(?:https?://)?(?:www\.)?instagram\.com/([a-zA-Z0-9_.]+)',
+            'tiktok': r'(?:https?://)?(?:www\.)?tiktok\.com/@([a-zA-Z0-9_.]+)',
+            'twitter': r'(?:https?://)?(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)',
+            'facebook': r'(?:https?://)?(?:www\.)?facebook\.com/([a-zA-Z0-9_.]+)',
+            'youtube': r'(?:https?://)?(?:www\.)?youtube\.com/(?:c|channel|user)/([a-zA-Z0-9_-]+)',
+            'github': r'(?:https?://)?(?:www\.)?github\.com/([a-zA-Z0-9_-]+)'
+        }
+        for platform, pattern in patterns.items():
+            found = re.findall(pattern, content)
+            for f in found:
+                self.social.add(f"{platform}: {f}")
+    
+    def process_html(self, content):
+        soup = BeautifulSoup(content, 'html.parser')
+        assets = {'css': [], 'js': [], 'images': [], 'fonts': []}
+        
+        # CSS
+        for tag in soup.find_all('link'):
+            if tag.get('rel') and 'stylesheet' in tag.get('rel'):
+                href = tag.get('href')
+                if href and not href.startswith(('data:', '//')):
+                    full_url = urljoin(self.base_url, href)
+                    full_url = urldefrag(full_url)[0]
+                    if full_url:
+                        assets['css'].append(full_url)
+                        local = self.download_file(full_url, os.path.join(self.output_dir, 'css'))
+                        if local:
+                            tag['href'] = os.path.basename(local)
+        
+        # JS
+        for tag in soup.find_all('script'):
+            src = tag.get('src')
+            if src and not src.startswith(('data:', '//')):
+                full_url = urljoin(self.base_url, src)
+                full_url = urldefrag(full_url)[0]
+                if full_url:
+                    assets['js'].append(full_url)
+                    local = self.download_file(full_url, os.path.join(self.output_dir, 'js'))
+                    if local:
+                        tag['src'] = os.path.basename(local)
+            elif tag.string:
+                js = str(tag.string)
+                apis = self.extract_apis(js)
+                for api in apis:
+                    self.api_endpoints.add(api)
+                self.extract_emails(js)
+                self.extract_social(js)
+        
+        # Images
+        for tag in soup.find_all(['img', 'source']):
+            src = tag.get('src')
+            if src and not src.startswith(('data:', 'blob:', '//')):
+                full_url = urljoin(self.base_url, src)
+                full_url = urldefrag(full_url)[0]
+                if full_url:
+                    assets['images'].append(full_url)
+                    local = self.download_file(full_url, os.path.join(self.output_dir, 'images'))
+                    if local:
+                        tag['src'] = os.path.basename(local)
+        
+        # Fonts
+        for tag in soup.find_all('link'):
+            href = tag.get('href')
+            if href and any(x in href.lower() for x in ['font', '.woff', '.ttf', '.otf', '.eot']):
+                if not href.startswith(('data:', '//')):
+                    full_url = urljoin(self.base_url, href)
+                    full_url = urldefrag(full_url)[0]
+                    if full_url:
+                        assets['fonts'].append(full_url)
+                        local = self.download_file(full_url, os.path.join(self.output_dir, 'fonts'))
+                        if local:
+                            tag['href'] = os.path.basename(local)
+        
+        # Extract from HTML
+        apis = self.extract_apis(content)
+        for api in apis:
+            self.api_endpoints.add(api)
+        self.extract_emails(content)
+        self.extract_social(content)
+        
+        # Subdomains
+        domain = urlparse(self.url).netloc
+        sub_pattern = r'(?:https?://)?([a-zA-Z0-9-]+)\.' + re.escape(domain)
+        subs = re.findall(sub_pattern, content)
+        for sub in subs:
+            if sub not in ['www', 'api', 'app', 'dev', 'test', 'staging', 'mail', 'ftp']:
+                self.subdomains.add(sub + '.' + domain)
+        
+        return str(soup), assets
+    
+    def process_css(self, content, base_url):
+        pattern = r'url\s*\(\s*["\']?([^"\')\s]+)["\']?\s*\)'
+        matches = re.findall(pattern, content)
+        for m in matches:
+            if not m.startswith(('data:', 'blob:', '//')):
+                full_url = urljoin(base_url, m)
+                full_url = urldefrag(full_url)[0]
+                if full_url:
+                    local = self.download_file(full_url, os.path.join(self.output_dir, 'images'))
+                    if local:
+                        content = content.replace(m, os.path.basename(local))
+        return content
+    
+    def run(self):
+        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {GREEN}🚀 DEEP CLONE STARTED{RESET}")
+        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        
+        self.create_folders()
+        
+        print(f"  {WHITE}📌 Target  : {CYAN}{self.url}{RESET}")
+        print(f"  {WHITE}📁 Output  : {CYAN}{self.output_dir}{RESET}")
+        print()
+        
+        # Download index
+        print(f"  {GREEN}⏳ Downloading index page...{RESET}")
+        res = self.safe_request(self.url, timeout=30)
+        if not res:
+            error("Failed to fetch website")
+            return
+        
+        self.base_url = f"{res.url.rstrip('/')}/"
+        content = res.text
+        
+        # Process HTML
+        print(f"  {GREEN}⏳ Processing HTML & assets...{RESET}")
+        html_content, assets = self.process_html(content)
+        
+        # Save index
+        with open(os.path.join(self.output_dir, 'index.html'), 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        success("index.html saved")
+        
+        # Process CSS files
+        if assets['css']:
+            print(f"  {GREEN}⏳ Processing CSS ({len(assets['css'])} files)...{RESET}")
+            for css_url in assets['css']:
+                css_res = self.safe_request(css_url, timeout=15)
+                if css_res:
+                    processed = self.process_css(css_res.text, css_url)
+                    filename = os.path.basename(css_url.split('?')[0]) or hashlib.md5(css_url.encode()).hexdigest()[:12] + '.css'
+                    with open(os.path.join(self.output_dir, 'css', filename), 'w', encoding='utf-8') as f:
+                        f.write(processed)
+        
+        # Process JS files
+        if assets['js']:
+            print(f"  {GREEN}⏳ Processing JavaScript ({len(assets['js'])} files)...{RESET}")
+            for js_url in assets['js']:
+                js_res = self.safe_request(js_url, timeout=15)
+                if js_res:
+                    filename = os.path.basename(js_url.split('?')[0]) or hashlib.md5(js_url.encode()).hexdigest()[:12] + '.js'
+                    with open(os.path.join(self.output_dir, 'js', filename), 'w', encoding='utf-8') as f:
+                        f.write(js_res.text)
+        
+        # Save reports
+        if self.api_endpoints:
+            with open(os.path.join(self.output_dir, 'api', 'endpoints.json'), 'w') as f:
+                json.dump(list(self.api_endpoints), f, indent=2)
+            success(f"API endpoints: {len(self.api_endpoints)} found")
+        
+        if self.emails:
+            with open(os.path.join(self.output_dir, 'data', 'emails.txt'), 'w') as f:
+                f.write('\n'.join(sorted(self.emails)))
+            success(f"Emails: {len(self.emails)} found")
+        
+        if self.social:
+            with open(os.path.join(self.output_dir, 'data', 'social.txt'), 'w') as f:
+                f.write('\n'.join(sorted(self.social)))
+            success(f"Social media: {len(self.social)} found")
+        
+        if self.subdomains:
+            with open(os.path.join(self.output_dir, 'data', 'subdomains.txt'), 'w') as f:
+                f.write('\n'.join(sorted(self.subdomains)))
+            success(f"Subdomains: {len(self.subdomains)} found")
+        
+        # Summary
+        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {GREEN}📊 CLONE SUMMARY{RESET}")
+        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {WHITE}📄 HTML      : {GREEN}1 file{RESET}")
+        print(f"  {WHITE}🎨 CSS       : {GREEN}{len(assets['css'])} files{RESET}")
+        print(f"  {WHITE}⚡ JS        : {GREEN}{len(assets['js'])} files{RESET}")
+        print(f"  {WHITE}🖼️ Images    : {GREEN}{len(assets['images'])} files{RESET}")
+        print(f"  {WHITE}🔤 Fonts     : {GREEN}{len(assets['fonts'])} files{RESET}")
+        print(f"  {WHITE}📦 Total     : {GREEN}{self.total_files} files{RESET}")
+        print(f"  {WHITE}💾 Size      : {GREEN}{self.total_size:,} bytes{RESET}")
+        print(f"  {WHITE}🔗 API       : {GREEN}{len(self.api_endpoints)} endpoints{RESET}")
+        print(f"  {WHITE}📧 Emails    : {GREEN}{len(self.emails)} found{RESET}")
+        print(f"  {WHITE}📱 Social    : {GREEN}{len(self.social)} found{RESET}")
+        print(f"  {WHITE}🌐 Subdomain : {GREEN}{len(self.subdomains)} found{RESET}")
+        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"\n{GREEN}✅ Clone complete! Saved to: {WHITE}{self.output_dir}{RESET}")
+
+# ============================================================
+# TOOL FUNCTIONS
+# ============================================================
+def clone_deep():
+    url = input(f"  {WHITE}enter URL: {RESET}").strip()
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    
+    download_path = get_downloads_path()
+    output_dir = os.path.join(download_path, 'BONGKAR_WEB')
+    
+    clone = DeepClone(url, output_dir)
+    clone.run()
     print(f"\n{YELLOW}  press Enter to continue...{RESET}")
     input()
 
-# ============================================================
-# TOOL 3: CHECK HTTP STATUS
-# ============================================================
-def check_status(url):
-    loading_animation("checking HTTP status", 0.5)
+def check_status():
+    url = input(f"  {WHITE}enter URL: {RESET}").strip()
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    
+    print(f"\n  {GREEN}⏳ checking status...{RESET}")
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
-        response = requests.get(url, headers=headers, timeout=10)
-        status = response.status_code
-        
-        print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
-        print(f"{BLUE}📡 HTTP STATUS CHECK{RESET}")
-        print(f"{CYAN}════════════════════════════════════════════{RESET}")
-        print(f"\n {BLUE}🔗 URL{RESET}    : {WHITE}{url}{RESET}")
-        print(f" {BLUE}📊 Status{RESET} : {WHITE}{status} {response.reason}{RESET}")
-        if status == 200:
-            print(f" {GREEN}✅ Status{RESET} : ONLINE")
-        elif status == 404:
-            print(f" {RED}❌ Status{RESET} : NOT FOUND")
-        elif status in [301, 302]:
-            print(f" {YELLOW}🔄 Status{RESET} : REDIRECT")
-        elif status >= 500:
-            print(f" {RED}❌ Status{RESET} : SERVER ERROR")
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {BLUE}📡 HTTP STATUS{RESET}")
+        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {WHITE}URL     : {CYAN}{url}{RESET}")
+        print(f"  {WHITE}Status  : {GREEN if res.status_code == 200 else YELLOW}{res.status_code} {res.reason}{RESET}")
+        print(f"  {WHITE}Size    : {CYAN}{len(res.text):,} bytes{RESET}")
+        print(f"  {WHITE}Time    : {CYAN}{res.elapsed.total_seconds():.2f}s{RESET}")
+        if res.status_code == 200:
+            print(f"  {GREEN}✅ Status: ONLINE{RESET}")
+        elif res.status_code in [301, 302]:
+            print(f"  {YELLOW}🔄 Status: REDIRECT{RESET}")
+        elif res.status_code >= 500:
+            print(f"  {RED}❌ Status: SERVER ERROR{RESET}")
         else:
-            print(f" {YELLOW}ℹ️ Status{RESET} : {status}")
-        print(f" {BLUE}📦 Size{RESET}   : {WHITE}{len(response.text):,} bytes{RESET}")
-        print(f" {BLUE}⏱️  Time{RESET}   : {WHITE}{response.elapsed.total_seconds():.2f}s{RESET}")
+            print(f"  {YELLOW}ℹ️ Status: {res.status_code}{RESET}")
     except Exception as e:
         error(f"Failed: {e}")
     print(f"\n{YELLOW}  press Enter to continue...{RESET}")
     input()
 
-# ============================================================
-# TOOL 4: GET METADATA
-# ============================================================
-def get_metadata(url):
-    loading_animation("analyzing page metadata", 0.6)
-    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
-    html = response.text
-
-    title = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
-    title = title.group(1).strip() if title else 'N/A'
-
-    desc = re.search(r'<meta[^>]*name=[\'"]description[\'"][^>]*content=[\'"]([^\'"]+)[\'"]', html, re.IGNORECASE)
-    desc = desc.group(1).strip() if desc else 'N/A'
-
-    links_count = len(re.findall(r'<a[^>]*href=[\'"][^\'"]+[\'"]', html))
-    images_count = len(re.findall(r'<img[^>]*src=[\'"][^\'"]+[\'"]', html))
-    scripts_count = len(re.findall(r'<script[^>]*src=[\'"][^\'"]+[\'"]', html))
-
-    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
-    print(f"{BLUE}📋 PAGE METADATA{RESET}")
-    print(f"{CYAN}════════════════════════════════════════════{RESET}")
-    print(f"\n {BLUE}🔗 URL{RESET}     : {WHITE}{url}{RESET}")
-    print(f" {BLUE}📄 Title{RESET}   : {WHITE}{title}{RESET}")
-    print(f" {BLUE}📝 Desc{RESET}    : {WHITE}{desc}{RESET}")
-    print(f" {BLUE}🔗 Links{RESET}   : {WHITE}{links_count}{RESET}")
-    print(f" {BLUE}🖼️ Images{RESET}  : {WHITE}{images_count}{RESET}")
-    print(f" {BLUE}📜 Scripts{RESET} : {WHITE}{scripts_count}{RESET}")
-    print(f" {BLUE}📦 Size{RESET}    : {WHITE}{len(html):,} bytes{RESET}")
+def get_metadata():
+    url = input(f"  {WHITE}enter URL: {RESET}").strip()
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    
+    print(f"\n  {GREEN}⏳ analyzing...{RESET}")
+    try:
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+        html = res.text
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        title = soup.title.string.strip() if soup.title else 'N/A'
+        desc = soup.find('meta', attrs={'name': 'description'})
+        desc = desc.get('content', 'N/A') if desc else 'N/A'
+        
+        links = len(soup.find_all('a'))
+        images = len(soup.find_all('img'))
+        scripts = len(soup.find_all('script'))
+        styles = len(soup.find_all('link', rel='stylesheet'))
+        
+        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {BLUE}📋 PAGE METADATA{RESET}")
+        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {WHITE}📄 Title  : {CYAN}{title}{RESET}")
+        print(f"  {WHITE}📝 Desc   : {CYAN}{desc[:80]}{'...' if len(desc) > 80 else ''}{RESET}")
+        print(f"  {WHITE}🔗 Links  : {CYAN}{links}{RESET}")
+        print(f"  {WHITE}🖼️ Images : {CYAN}{images}{RESET}")
+        print(f"  {WHITE}📜 Scripts: {CYAN}{scripts}{RESET}")
+        print(f"  {WHITE}🎨 CSS    : {CYAN}{styles}{RESET}")
+        print(f"  {WHITE}📦 Size   : {CYAN}{len(html):,} bytes{RESET}")
+    except Exception as e:
+        error(f"Failed: {e}")
     print(f"\n{YELLOW}  press Enter to continue...{RESET}")
     input()
 
-# ============================================================
-# TOOL 5: PREVIEW PAGE
-# ============================================================
-def preview_page(url):
-    loading_animation("fetching page preview", 0.5)
-    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
-    html = response.text[:1500]
-
-    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
-    print(f"{BLUE}📄 PAGE PREVIEW{RESET}")
-    print(f"{CYAN}════════════════════════════════════════════{RESET}")
-    lines = html.split('\n')[:15]
-    for i, line in enumerate(lines, 1):
-        clean = line.strip()[:60]
-        if clean:
-            print(f" {WHITE}{i:2}. {clean}{RESET}")
-    print(f"\n{YELLOW}  press Enter to continue...{RESET}")
-    input()
-
-# ============================================================
-# TOOL 6: BATCH CLONE
-# ============================================================
-def batch_clone(urls, include_css=True):
-    results = []
-    total = len(urls)
-    for i, url in enumerate(urls, 1):
-        print()
-        loading(f"cloning {i}/{total}: {url}")
-        try:
-            result = clone_page(url, include_css)
-            results.append({'url': url, 'status': '✅', 'file': result['filename']})
-        except Exception as e:
-            results.append({'url': url, 'status': '❌', 'file': str(e)})
-
-    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
-    print(f"{BLUE}📋 BATCH REPORT{RESET}")
-    print(f"{CYAN}════════════════════════════════════════════{RESET}")
-    for r in results:
-        print(f" {GREEN if r['status'] == '✅' else RED}{r['status']}{RESET} {WHITE}{r['url']}{RESET} → {PURPLE}{r['file']}{RESET}")
-    print(f"\n{YELLOW}  press Enter to continue...{RESET}")
-    input()
-
-# ============================================================
-# TOOL 7: VIEW CLONED FILES
-# ============================================================
-def list_cloned_files():
+def list_files():
     download_path = get_downloads_path()
     output_dir = os.path.join(download_path, 'BONGKAR_WEB')
+    
     if not os.path.exists(output_dir):
-        warning("no files found in BONGKAR_WEB")
+        warning("BONGKAR_WEB folder not found")
         print(f"\n{YELLOW}  press Enter to continue...{RESET}")
         input()
         return
-
-    files = os.listdir(output_dir)
+    
+    files = []
+    for root, dirs, filenames in os.walk(output_dir):
+        for f in filenames:
+            path = os.path.join(root, f)
+            size = os.path.getsize(path)
+            rel = os.path.relpath(path, output_dir)
+            files.append((rel, size))
+    
     if not files:
-        warning("no files found in BONGKAR_WEB")
+        warning("No files found")
         print(f"\n{YELLOW}  press Enter to continue...{RESET}")
         input()
         return
-
-    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
-    print(f"{BLUE}📂 FILES IN BONGKAR_WEB{RESET}")
-    print(f"{CYAN}════════════════════════════════════════════{RESET}")
-    for f in files:
-        path = os.path.join(output_dir, f)
-        size = os.path.getsize(path)
-        print(f" {WHITE}📄 {f} ({size:,} bytes){RESET}")
-    print(f"\n {BLUE}📂 folder:{RESET} {WHITE}{output_dir}{RESET}")
-    print(f"\n{YELLOW}  press Enter to continue...{RESET}")
-    input()
-
-# ============================================================
-# TOOL 8: EXTRACT LINKS
-# ============================================================
-def extract_links(url):
-    loading_animation("extracting links", 0.5)
-    headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
-    html = response.text
     
-    links = re.findall(r'<a[^>]*href=[\'"]([^\'"]+)[\'"]', html)
-    unique_links = list(set(links))
-    
-    print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
-    print(f"{BLUE}🔗 EXTRACTED LINKS ({len(unique_links)} total){RESET}")
-    print(f"{CYAN}════════════════════════════════════════════{RESET}")
-    for i, link in enumerate(unique_links[:30], 1):
-        print(f" {WHITE}{i:2}. {link[:60]}{RESET}")
-    print(f"\n{YELLOW}  press Enter to continue...{RESET}")
-    input()
-
-# ============================================================
-# TOOL 9: CHECK SSL CERTIFICATE
-# ============================================================
-def check_ssl(domain):
-    loading_animation("checking SSL certificate", 0.6)
-    try:
-        domain = re.sub(r'^https?://', '', domain)
-        domain = domain.split('/')[0]
-        
-        context = ssl.create_default_context()
-        with socket.create_connection((domain, 443), timeout=5) as sock:
-            with context.wrap_socket(sock, server_hostname=domain) as ssock:
-                cert = ssock.getpeercert()
-                
-        print(f"\n{CYAN}════════════════════════════════════════════{RESET}")
-        print(f"{BLUE}🔒 SSL CERTIFICATE{RESET}")
-        print(f"{CYAN}════════════════════════════════════════════{RESET}")
-        print(f"\n {BLUE}🌐 Domain{RESET}    : {WHITE}{domain}{RESET}")
-        print(f" {BLUE}📅 Issuer{RESET}    : {WHITE}{cert.get('issuer', 'N/A')}{RESET}")
-        print(f" {BLUE}⏳ Expires{RESET}   : {WHITE}{cert.get('notAfter', 'N/A')}{RESET}")
-        print(f" {GREEN}✅ Valid{RESET}      : {WHITE}{'Yes' if cert.get('notAfter') else 'No'}{RESET}")
-    except Exception as e:
-        error(f"SSL check failed: {e}")
+    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+    print(f"  {BLUE}📂 FILES IN BONGKAR_WEB ({len(files)} total){RESET}")
+    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+    for f, size in sorted(files)[:50]:
+        print(f"  {WHITE}📄 {f} ({size:,} bytes){RESET}")
+    if len(files) > 50:
+        print(f"  {YELLOW}... and {len(files) - 50} more{RESET}")
+    print(f"\n  {WHITE}📂 Folder: {CYAN}{output_dir}{RESET}")
     print(f"\n{YELLOW}  press Enter to continue...{RESET}")
     input()
 
@@ -447,99 +517,35 @@ def check_ssl(domain):
 # ============================================================
 def main():
     show_banner()
-    print(f"\n{GREEN}  ════════════════════════════════════════════════{RESET}")
-    print(f"  {WHITE}⚠️  website tools | saves to BONGKAR_WEB/{RESET}")
-    print(f"{GREEN}  ════════════════════════════════════════════════{RESET}")
-
+    
+    print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
+    print(f"  {WHITE}⚠️  DEEP CLONE TOOLS{RESET}")
+    print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
+    
     print(f"\n{CYAN}  📌 CHOOSE FEATURE:{RESET}")
-    print(f"  {GREEN}1{WHITE}  Clone Page            {CYAN}|{WHITE}  {GREEN}6{WHITE}  Batch Clone{RESET}")
-    print(f"  {GREEN}2{WHITE}  Images web            {CYAN}|{WHITE}  {GREEN}7{WHITE}  View Files{RESET}")
-    print(f"  {GREEN}3{WHITE}  Check HTTP Status     {CYAN}|{WHITE}  {GREEN}8{WHITE}  Extract Links{RESET}")
-    print(f"  {GREEN}4{WHITE}  Get Metadata          {CYAN}|{WHITE}  {GREEN}9{WHITE}  Check SSL Certificate{RESET}")
-    print(f"  {GREEN}5{WHITE}  Preview Page          {CYAN}|{WHITE}  {RED}10{WHITE} Exit{RESET}")
-
-    choice = input(f"\n  {YELLOW}➜ select (1-10): {RESET}").strip()
-
+    print(f"  {GREEN}1{WHITE}  DEEP CLONE (Full page + assets){RESET}")
+    print(f"  {GREEN}2{WHITE}  Check HTTP Status{RESET}")
+    print(f"  {GREEN}3{WHITE}  Get Page Metadata{RESET}")
+    print(f"  {GREEN}4{WHITE}  View Cloned Files{RESET}")
+    print(f"  {RED}5{WHITE}  Exit{RESET}")
+    
+    choice = input(f"\n  {YELLOW}➜ select (1-5): {RESET}").strip()
+    
     if choice == '1':
-        url = input(f"  {WHITE}enter url: {RESET}").strip()
-        if not url.startswith('http://') and not url.startswith('https://'):
-            url = 'https://' + url
-        css_opt = input(f"  {WHITE}include CSS? (y/n): {RESET}").strip().lower()
-        include_css = css_opt == 'y'
-        print(f"\n  {GREEN}⏳ cloning...{RESET}\n")
-        result = clone_page(url, include_css)
-        print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {CYAN}📋 CLONE REPORT{RESET}")
-        print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"\n  {GREEN}✅ status{RESET} : {WHITE}success{RESET}")
-        print(f"  {CYAN}📄 title{RESET} : {WHITE}{result['title']}{RESET}")
-        print(f"  {CYAN}📁 saved{RESET} : {WHITE}{result['path']}{RESET}")
-        print(f"  {CYAN}📦 size{RESET}  : {WHITE}{result['size']:,} bytes{RESET}")
-        print(f"\n{YELLOW}  press Enter to continue...{RESET}")
-        input()
-
+        clone_deep()
+        main()
     elif choice == '2':
-        url = input(f"  {WHITE}enter url: {RESET}").strip()
-        if not url.startswith('http://') and not url.startswith('https://'):
-            url = 'https://' + url
-        print(f"\n  {GREEN}⏳ scanning images...{RESET}\n")
-        download_images_from_website(url)
-
+        check_status()
+        main()
     elif choice == '3':
-        url = input(f"  {WHITE}enter url: {RESET}").strip()
-        if not url.startswith('http://') and not url.startswith('https://'):
-            url = 'https://' + url
-        print(f"\n  {GREEN}⏳ checking status...{RESET}\n")
-        check_status(url)
-
+        get_metadata()
+        main()
     elif choice == '4':
-        url = input(f"  {WHITE}enter url: {RESET}").strip()
-        if not url.startswith('http://') and not url.startswith('https://'):
-            url = 'https://' + url
-        print(f"\n  {GREEN}⏳ analyzing...{RESET}\n")
-        get_metadata(url)
-
+        list_files()
+        main()
     elif choice == '5':
-        url = input(f"  {WHITE}enter url: {RESET}").strip()
-        if not url.startswith('http://') and not url.startswith('https://'):
-            url = 'https://' + url
-        print(f"\n  {GREEN}⏳ loading preview...{RESET}\n")
-        preview_page(url)
-
-    elif choice == '6':
-        print(f"  {WHITE}enter URLs (one per line, empty to finish):{RESET}")
-        urls = []
-        while True:
-            url = input(f"  {YELLOW}➜ {RESET}").strip()
-            if not url:
-                break
-            if not url.startswith('http://') and not url.startswith('https://'):
-                url = 'https://' + url
-            urls.append(url)
-        if urls:
-            css_opt = input(f"  {WHITE}include CSS? (y/n): {RESET}").strip().lower()
-            include_css = css_opt == 'y'
-            batch_clone(urls, include_css)
-
-    elif choice == '7':
-        list_cloned_files()
-
-    elif choice == '8':
-        url = input(f"  {WHITE}enter url: {RESET}").strip()
-        if not url.startswith('http://') and not url.startswith('https://'):
-            url = 'https://' + url
-        print(f"\n  {GREEN}⏳ extracting links...{RESET}\n")
-        extract_links(url)
-
-    elif choice == '9':
-        domain = input(f"  {WHITE}enter domain: {RESET}").strip()
-        print(f"\n  {GREEN}⏳ checking SSL...{RESET}\n")
-        check_ssl(domain)
-
-    elif choice == '10':
         print(f"\n{GREEN}  copy. save. conquer.{RESET}")
         sys.exit(0)
-
     else:
         error("invalid choice")
         print(f"\n{YELLOW}  press Enter to continue...{RESET}")
@@ -549,7 +555,8 @@ def main():
 if __name__ == '__main__':
     try:
         import requests
+        from bs4 import BeautifulSoup
     except ImportError:
-        print(f"{RED} [ ! ] requests not installed. run: pip install requests{RESET}")
+        print(f"{RED} [ ! ] Install: pip install requests beautifulsoup4{RESET}")
         sys.exit(1)
     main()
