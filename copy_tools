@@ -7,11 +7,12 @@ import requests
 import threading
 import time
 import subprocess
+import random
 from datetime import datetime
 from urllib.parse import urljoin, urlparse, urldefrag
 from bs4 import BeautifulSoup
 
-VERSION = '4.2'
+VERSION = '4.3'
 AUTHOR = 'egaaX official'
 
 # ============================================================
@@ -38,22 +39,110 @@ SONGS = [
 ]
 
 # ============================================================
-# FUNGSI PUTAR LAGU
+# ANIMASI VISUALIZER
 # ============================================================
-def play_song(url, title):
-    """Putar lagu pake mpv (Termux) atau default player"""
+def visualizer_animation(title, duration=3):
+    """Animasi visualizer sebelum lagu diputer"""
+    frames = [
+        """
+        ╔═══════════════════════════════════════════╗
+        ║  ██████╗  █████╗ ██╗   ██╗███████╗██████╗ ║
+        ║  ██╔══██╗██╔══██╗╚██╗ ██╔╝██╔════╝██╔══██╗║
+        ║  ██████╔╝███████║ ╚████╔╝ █████╗  ██████╔╝║
+        ║  ██╔══██╗██╔══██║  ╚██╔╝  ██╔══╝  ██╔══██╗║
+        ║  ██████╔╝██║  ██║   ██║   ███████╗██║  ██║║
+        ║  ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝║
+        ╚═══════════════════════════════════════════╝
+        """,
+        """
+        ╔═══════════════════════════════════════════╗
+        ║  ╔═══╗╔═══╗╔═══╗╔═══╗╔═══╗╔═══╗╔═══╗  ║
+        ║  ║███║║███║║███║║███║║███║║███║║███║  ║
+        ║  ║███║║███║║███║║███║║███║║███║║███║  ║
+        ║  ║███║║███║║███║║███║║███║║███║║███║  ║
+        ║  ╚═══╝╚═══╝╚═══╝╚═══╝╚═══╝╚═══╝╚═══╝  ║
+        ║     🎵  NOW PLAYING  🎵                ║
+        ╚═══════════════════════════════════════════╝
+        """,
+        """
+        ╔═══════════════════════════════════════════╗
+        ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
+        ║  ░░██╗░░██╗██████╗░██████╗░██████╗░░░  ║
+        ║  ░░██║░░██║██╔══██╗██╔══██╗██╔══██╗░  ║
+        ║  ░░███████║██████╔╝██████╔╝██████╔╝░  ║
+        ║  ░░██╔══██║██╔══██╗██╔══██╗██╔══██╗░  ║
+        ║  ░░██║░░██║██║░░██║██║░░██║██║░░██║░  ║
+        ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
+        ╚═══════════════════════════════════════════╝
+        """
+    ]
+    
+    # Animasi frame berganti
+    for _ in range(duration * 4):
+        for frame in frames:
+            sys.stdout.write('\033[H\033[J')
+            print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+            print(f"  {GREEN}🎵 VISUALIZER{RESET}")
+            print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+            print(frame)
+            print(f"\n  {WHITE}🎶 {title}{RESET}")
+            
+            # Equalizer animasi
+            bars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
+            eq = ''.join(random.choice(bars) for _ in range(30))
+            print(f"  {GREEN}{eq}{RESET}")
+            
+            # Volume bar
+            vol = random.randint(30, 100)
+            bar = '█' * (vol // 5) + '░' * (20 - vol // 5)
+            print(f"  {WHITE}Volume: {GREEN}[{bar}] {vol}%{RESET}")
+            
+            time.sleep(0.15)
+    
+    # Tampilan akhir
+    sys.stdout.write('\033[H\033[J')
     print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {GREEN}🎵 PUTAR LAGU{RESET}")
+    print(f"  {GREEN}🎵 VISUALIZER{RESET}")
     print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+    print(f"""
+    {PURPLE}   ╔═══════════════════════════════════════════╗
+    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+    {PURPLE}   ╚═══════════════════════════════════════════╝{RESET}
+    """)
     print(f"  {WHITE}🎶 {title}{RESET}")
-    print(f"  {CYAN}⏳ Memutar... (Ctrl+C untuk stop){RESET}")
+    print(f"  {GREEN}⏳ Memutar... (Ctrl+C untuk stop){RESET}")
     print(f"{CYAN}  ════════════════════════════════════════════{RESET}\n")
+
+def play_song(url, title):
+    """Putar lagu dengan visualizer"""
+    
+    # Jalankan visualizer dulu
+    visualizer_animation(title, duration=3)
     
     try:
         # Coba pake mpv (Termux)
-        subprocess.Popen(['mpv', '--no-video', url])
+        process = subprocess.Popen(
+            ['mpv', '--no-video', '--really-quiet', url],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
         print(f"  {GREEN}✅ Lagu diputar via mpv{RESET}")
-    except:
+        print(f"  {YELLOW}💡 Tekan Ctrl+C untuk stop lagu{RESET}")
+        
+        # Tunggu proses sampai selesai atau di-stop
+        try:
+            process.wait()
+        except KeyboardInterrupt:
+            process.terminate()
+            print(f"\n  {YELLOW}⏹️ Lagu dihentikan{RESET}")
+            
+    except FileNotFoundError:
         try:
             # Coba pake termux-open (Android)
             subprocess.Popen(['termux-open', url])
@@ -143,12 +232,12 @@ def show_banner():
 {RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
 {WHITE}╔══════════════════════════════════════════════════════════════╗
-{WHITE}║  {GREEN}COPY TOOLS  - WEBSITE {WHITE}                         ║
+{WHITE}║  {GREEN}COPY TOOLS - WITH MUSIC VISUALIZER{WHITE}                  ║
 {WHITE}║  {CYAN}Created by : egaaX official{WHITE}                              ║
 {WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
 {WHITE}║  {CYAN}📦 Clone: HTML | CSS | JS | Images | API{WHITE}                ║
-{WHITE}║  {CYAN}🎵 Music: 5 Lagu siap diputar{WHITE}                           ║
+{WHITE}║  {CYAN}🎵 Music: 5 Lagu + Visualizer Animasi{WHITE}                   ║
 {WHITE}╚══════════════════════════════════════════════════════════════╝
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
 """)
@@ -590,7 +679,7 @@ def main():
         show_banner()
         
         print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {WHITE}📌 COPY TOOLS - WITH 5 SONGS{RESET}")
+        print(f"  {WHITE}📌 COPY TOOLS - WITH VISUALIZER{RESET}")
         print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
         
         print(f"\n{CYAN}  📌 PILIH:{RESET}")
@@ -598,7 +687,7 @@ def main():
         print(f"  {GREEN}2{WHITE}  Check HTTP Status{RESET}")
         print(f"  {GREEN}3{WHITE}  Get Page Metadata{RESET}")
         print(f"  {GREEN}4{WHITE}  Lihat Hasil Clone{RESET}")
-        print(f"  {GREEN}5{WHITE}  🎵 PUTAR LAGU{RESET}")
+        print(f"  {GREEN}5{WHITE}  🎵 PUTAR LAGU + VISUALIZER{RESET}")
         print(f"  {RED}6{WHITE}  Exit{RESET}")
         
         choice = input(f"\n  {YELLOW}➜ pilih (1-6): {RESET}").strip()
