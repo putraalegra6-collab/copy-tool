@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+# ============================================================
+#  COPY TOOLS v4.8 - FIX AUDIO + VISUALIZER
+#  Created by : egaaX official
+#  "copy. save. conquer."
+# ============================================================
+
 import os
 import sys
 import re
@@ -13,12 +20,9 @@ from datetime import datetime
 from urllib.parse import urljoin, urlparse, urldefrag
 from bs4 import BeautifulSoup
 
-VERSION = '4.7'
+VERSION = '4.8'
 AUTHOR = 'egaaX official'
 
-# ============================================================
-# WARNA
-# ============================================================
 GREEN = '\033[92m'
 CYAN = '\033[96m'
 YELLOW = '\033[93m'
@@ -31,7 +35,7 @@ RESET = '\033[0m'
 BOLD = '\033[1m'
 
 # ============================================================
-# DAFTAR LAGU
+# DAFTAR LAGU (TEST PAKE YANG PASTI WORK)
 # ============================================================
 SONGS = [
     {'title': 'Yang Patah Tumbuh, Yang Hilang Berganti', 'url': 'https://file-egabox.lovable.app/f/3ee2j2.mp3'},
@@ -42,89 +46,54 @@ SONGS = [
 ]
 
 # ============================================================
-# VOLUME BOOSTER
+# VOLUME BOOST
 # ============================================================
 def get_volume_boost():
-    """Pilih level volume booster"""
     print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
     print(f"  {GREEN}🔊 VOLUME BOOSTER{RESET}")
     print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
     print(f"  {WHITE}1. Normal (0dB){RESET}")
     print(f"  {WHITE}2. Boost +3dB{RESET}")
     print(f"  {WHITE}3. Boost +6dB{RESET}")
-    print(f"  {WHITE}4. Boost +10dB (keras banget){RESET}")
-    print(f"  {WHITE}5. Boost +15dB (max){RESET}")
+    print(f"  {WHITE}4. Boost +10dB{RESET}")
+    print(f"  {WHITE}5. Boost +15dB{RESET}")
     
     choice = input(f"\n  {YELLOW}➜ pilih (1-5): {RESET}").strip()
-    
-    boost_map = {
-        '1': '0',
-        '2': '3',
-        '3': '6',
-        '4': '10',
-        '5': '15'
-    }
-    
+    boost_map = {'1': '0', '2': '3', '3': '6', '4': '10', '5': '15'}
     return boost_map.get(choice, '0')
 
 # ============================================================
-# VISUALIZER ULTIMATE
+# VISUALIZER — JALAN DI BACKGROUND (THREAD)
 # ============================================================
-def visualizer_ultimate(title, duration=8):
-    """Animasi visualizer tanpa lirik — dari awal sampe selesai"""
-    
+def visualizer_thread(title, duration, stop_event):
+    """Visualizer jalan di thread terpisah"""
     bars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
     colors = [GREEN, CYAN, BLUE, PURPLE, MAGENTA, YELLOW]
-    spin_chars = ['◐', '◓', '◑', '◒', '◐', '◓', '◑', '◒']
-    
-    particles = []
-    for _ in range(15):
-        particles.append({
-            'x': random.randint(5, 70),
-            'y': random.randint(5, 20),
-            'dx': random.uniform(-0.5, 0.5),
-            'dy': random.uniform(-0.3, 0.3),
-            'char': random.choice(['•', '●', '◦', '◉', '○'])
-        })
+    spin_chars = ['◐', '◓', '◑', '◒']
     
     start_time = time.time()
     frame = 0
-    progress = 0
     
-    while time.time() - start_time < duration:
+    while not stop_event.is_set() and time.time() - start_time < duration:
         frame += 1
         progress = (time.time() - start_time) / duration
         progress_pct = int(progress * 100)
-        
-        for p in particles:
-            p['x'] += p['dx']
-            p['y'] += p['dy']
-            if p['x'] < 5 or p['x'] > 70:
-                p['dx'] *= -1
-            if p['y'] < 5 or p['y'] > 20:
-                p['dy'] *= -1
         
         sys.stdout.write('\033[H\033[J')
         
         print(f"\n{CYAN}  ════════════════════════════════════════════════════════════{RESET}")
         print(f"  {GREEN}🎵 VISUALIZER ULTIMATE{RESET}")
         print(f"{CYAN}  ════════════════════════════════════════════════════════════{RESET}")
-        
         print(f"\n  {WHITE}🎶 {BOLD}{title}{RESET}")
         
-        eq_line = ''
-        for i in range(40):
-            height = random.randint(1, 8)
-            col = random.choice(colors)
-            eq_line += f"{col}{bars[height-1]}{RESET}"
+        eq_line = ''.join(f"{random.choice(colors)}{random.choice(bars)}{RESET}" for _ in range(40))
         print(f"  {eq_line}")
         
         wave = ''
         for i in range(40):
             val = math.sin(i / 2 + time.time() * 5) * 4 + 4
             height = max(1, min(8, int(val)))
-            col = random.choice(colors)
-            wave += f"{col}{bars[height-1]}{RESET}"
+            wave += f"{random.choice(colors)}{bars[height-1]}{RESET}"
         print(f"  {wave}")
         
         bar_len = 50
@@ -144,21 +113,21 @@ def visualizer_ultimate(title, duration=8):
         
         time.sleep(0.07)
     
-    sys.stdout.write('\033[H\033[J')
-    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {GREEN}✅ LAGU SELESAI!{RESET}")
-    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"\n  {WHITE}🎶 {title}{RESET}")
-    print(f"  {GREEN}  Visualizer selesai!{RESET}\n")
-    time.sleep(1)
+    # Clear setelah visualizer selesai
+    if not stop_event.is_set():
+        sys.stdout.write('\033[H\033[J')
+        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {GREEN}✅ LAGU SELESAI!{RESET}")
+        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"\n  {WHITE}🎶 {title}{RESET}")
+        print(f"  {GREEN}  Visualizer selesai!{RESET}\n")
 
 # ============================================================
-# PLAY SONG WITH VOLUME BOOST
+# PLAY SONG — FIX AUDIO + VISUALIZER
 # ============================================================
 def play_song(url, title):
-    """Putar lagu + visualizer + volume booster"""
+    """Putar lagu + visualizer — JALAN BERSAMAAN"""
     
-    # ── Pilih volume boost ──
     boost_db = get_volume_boost()
     
     if boost_db == '0':
@@ -167,66 +136,98 @@ def play_song(url, title):
         print(f"  {GREEN}🔊 Volume Boost: +{boost_db}dB{RESET}")
     time.sleep(1)
     
-    # ── Tampilkan visualizer ──
-    visualizer_ultimate(title, duration=8)
-    
-    # ── Clear dan putar ──
-    sys.stdout.write('\033[H\033[J')
-    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {GREEN}🎵 PUTAR LAGU + VOLUME BOOST{RESET}")
-    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {WHITE}🎶 {title}{RESET}")
-    
-    if boost_db != '0':
-        print(f"  {GREEN}🔊 Boost: +{boost_db}dB{RESET}")
-    print(f"  {CYAN}⏳ Memutar... (Ctrl+C untuk stop){RESET}\n")
-    
+    # ── Cek URL masih hidup ──
+    print(f"  {CYAN}⏳ Cek koneksi...{RESET}")
     try:
-        # ── MPV dengan volume boost ──
+        head = requests.head(url, timeout=10)
+        if head.status_code != 200:
+            print(f"  {RED}❌ URL lagu tidak bisa diakses (HTTP {head.status_code}){RESET}")
+            print(f"  {YELLOW}💡 Coba URL lain atau cek koneksi{RESET}")
+            input(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
+            return
+        print(f"  {GREEN}✅ URL lagu aktif{RESET}")
+    except:
+        print(f"  {YELLOW}⚠️ Gagal cek URL, tetap mencoba...{RESET}")
+    
+    # ── Download lagu ke lokal ──
+    print(f"  {CYAN}⏳ Download lagu...{RESET}")
+    try:
+        res = requests.get(url, stream=True, timeout=30)
+        if res.status_code == 200:
+            temp_file = '/tmp/temp_song.mp3'
+            with open(temp_file, 'wb') as f:
+                for chunk in res.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            print(f"  {GREEN}✅ Lagu di-download ke {temp_file}{RESET}")
+            local_url = temp_file
+        else:
+            print(f"  {YELLOW}⚠️ Gagal download, coba streaming langsung{RESET}")
+            local_url = url
+    except:
+        print(f"  {YELLOW}⚠️ Gagal download, coba streaming langsung{RESET}")
+        local_url = url
+    
+    # ── Tentukan durasi visualizer ──
+    duration = 180  # Asumsi lagu 3 menit, nanti di-stop manual
+    
+    # ── Mulai visualizer di thread background ──
+    stop_event = threading.Event()
+    viz_thread = threading.Thread(target=visualizer_thread, args=(title, duration, stop_event))
+    viz_thread.daemon = True
+    viz_thread.start()
+    
+    # ── Putar lagu di foreground ──
+    try:
         cmd = [
             'mpv',
             '--no-video',
             '--really-quiet',
             '--msg-level=all=error',
-            f'--volume={100 + int(boost_db) * 5}',  # Volume lebih tinggi
-            '--volume-max=200',  # Maksimum volume bisa 200%
-            '--af=volume=volume={}:0'.format(boost_db),  # Filter volume boost
-            '--audio-normalize=yes',  # Normalize audio
-            '--audio-channels=2',
-            '--audio-samplerate=48000',
-            url
+            f'--volume={100 + int(boost_db) * 5}',
+            '--volume-max=200',
+            f'--af=volume=volume={boost_db}:0',
+            '--audio-normalize=yes',
+            local_url
         ]
+        
+        print(f"  {GREEN}✅ Memutar lagu...{RESET}")
+        print(f"  {YELLOW}💡 Tekan Ctrl+C untuk stop{RESET}")
         
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
-        print(f"  {GREEN}✅ Lagu diputar via mpv{RESET}")
-        print(f"  {YELLOW}💡 Tekan Ctrl+C untuk stop{RESET}")
         
+        # Tunggu lagu selesai atau di-stop
         try:
             process.wait()
         except KeyboardInterrupt:
             process.terminate()
             print(f"\n  {YELLOW}⏹️ Lagu dihentikan{RESET}")
+        
+        # Hentikan visualizer
+        stop_event.set()
+        time.sleep(0.5)
+        
+        # Clear layar
+        sys.stdout.write('\033[H\033[J')
+        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {GREEN}⏹️ Lagu selesai / dihentikan{RESET}")
+        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        
+        # Hapus file temp
+        if local_url != url and os.path.exists('/tmp/temp_song.mp3'):
+            os.remove('/tmp/temp_song.mp3')
             
     except FileNotFoundError:
-        # ── Fallback pake termux-open ──
-        try:
-            subprocess.Popen(['termux-open', url])
-            print(f"  {GREEN}✅ Lagu diputar via termux-open (volume tergantung HP){RESET}")
-        except:
-            try:
-                subprocess.Popen(['xdg-open', url])
-                print(f"  {GREEN}✅ Lagu diputar via xdg-open (volume tergantung HP){RESET}")
-            except:
-                try:
-                    subprocess.Popen(['start', url], shell=True)
-                    print(f"  {GREEN}✅ Lagu diputar via start{RESET}")
-                except:
-                    print(f"  {RED}❌ Gagal putar lagu. Install mpv:{RESET}")
-                    print(f"  {YELLOW}   pkg install mpv{RESET}")
+        print(f"  {RED}❌ mpv tidak terinstall!{RESET}")
+        print(f"  {YELLOW}   Install: pkg install mpv{RESET}")
+        stop_event.set()
+        
+    except Exception as e:
+        print(f"  {RED}❌ Error: {e}{RESET}")
+        stop_event.set()
 
 # ============================================================
 # MENU MUSIC
@@ -262,7 +263,7 @@ def play_music():
             time.sleep(1)
 
 # ============================================================
-# REST OF THE CODE (SAMA KAYAK SEBELUMNYA)
+# REST OF THE CODE
 # ============================================================
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
@@ -304,7 +305,7 @@ def show_banner():
 {RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
 {WHITE}╔══════════════════════════════════════════════════════════════╗
-{WHITE}║  {GREEN}COPY TOOLS WEB - VOLUME BOOSTER{WHITE}                      ║
+{WHITE}║  {GREEN}COPY TOOLS v4.8 - FIX AUDIO + VISUALIZER{WHITE}               ║
 {WHITE}║  {CYAN}Created by : egaaX official{WHITE}                              ║
 {WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
@@ -316,7 +317,7 @@ def show_banner():
 """)
 
 # ============================================================
-# DEEP CLONE ENGINE (SAMA KAYAK SEBELUMNYA)
+# DEEP CLONE ENGINE
 # ============================================================
 class DeepClone:
     def __init__(self, url, output_dir):
@@ -725,7 +726,7 @@ def main():
         show_banner()
         
         print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {WHITE}📌 COPY TOOLS - VOLUME BOOSTER{RESET}")
+        print(f"  {WHITE}📌 COPY TOOLS - FIX AUDIO + VISUALIZER{RESET}")
         print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
         
         print(f"\n{CYAN}  📌 PILIH:{RESET}")
