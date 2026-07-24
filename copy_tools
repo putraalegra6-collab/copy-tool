@@ -4,7 +4,6 @@ import re
 import json
 import hashlib
 import requests
-import threading
 import time
 import subprocess
 import random
@@ -12,7 +11,7 @@ from datetime import datetime
 from urllib.parse import urljoin, urlparse, urldefrag
 from bs4 import BeautifulSoup
 
-VERSION = '4.3'
+VERSION = '4.4'
 AUTHOR = 'egaaX official'
 
 # ============================================================
@@ -39,103 +38,100 @@ SONGS = [
 ]
 
 # ============================================================
-# ANIMASI VISUALIZER
+# ANIMASI VISUALIZER (GERAK)
 # ============================================================
 def visualizer_animation(title, duration=3):
-    """Animasi visualizer sebelum lagu diputer"""
+    """Animasi visualizer bergerak"""
+    
     frames = [
-        """
-        ╔═══════════════════════════════════════════╗
-        ║  ██████╗  █████╗ ██╗   ██╗███████╗██████╗ ║
-        ║  ██╔══██╗██╔══██╗╚██╗ ██╔╝██╔════╝██╔══██╗║
-        ║  ██████╔╝███████║ ╚████╔╝ █████╗  ██████╔╝║
-        ║  ██╔══██╗██╔══██║  ╚██╔╝  ██╔══╝  ██╔══██╗║
-        ║  ██████╔╝██║  ██║   ██║   ███████╗██║  ██║║
-        ║  ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝║
-        ╚═══════════════════════════════════════════╝
+        f"""
+        {PURPLE}   ╔═══════════════════════════════════════════════════╗
+        {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+        {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+        {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+        {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+        {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+        {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+        {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
+        {PURPLE}   ╚═══════════════════════════════════════════════════╝{RESET}
         """,
-        """
-        ╔═══════════════════════════════════════════╗
-        ║  ╔═══╗╔═══╗╔═══╗╔═══╗╔═══╗╔═══╗╔═══╗  ║
-        ║  ║███║║███║║███║║███║║███║║███║║███║  ║
-        ║  ║███║║███║║███║║███║║███║║███║║███║  ║
-        ║  ║███║║███║║███║║███║║███║║███║║███║  ║
-        ║  ╚═══╝╚═══╝╚═══╝╚═══╝╚═══╝╚═══╝╚═══╝  ║
-        ║     🎵  NOW PLAYING  🎵                ║
-        ╚═══════════════════════════════════════════╝
+        f"""
+        {PURPLE}   ╔═══════════════════════════════════════════════════╗
+        {PURPLE}   ║  {GREEN}██╗░░██╗██████╗░██████╗░██████╗░░░░░░░░░░░  {PURPLE}║
+        {PURPLE}   ║  {GREEN}██║░░██║██╔══██╗██╔══██╗██╔══██╗░░░░░░░░  {PURPLE}║
+        {PURPLE}   ║  {GREEN}███████║██████╔╝██████╔╝██████╔╝░░░░░░░░  {PURPLE}║
+        {PURPLE}   ║  {GREEN}██╔══██║██╔══██╗██╔══██╗██╔══██╗░░░░░░░░  {PURPLE}║
+        {PURPLE}   ║  {GREEN}██║░░██║██║░░██║██║░░██║██║░░██║░░░░░░░░  {PURPLE}║
+        {PURPLE}   ║  {GREEN}╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░╚═╝░░░░░░░░  {PURPLE}║
+        {PURPLE}   ╚═══════════════════════════════════════════════════╝{RESET}
         """,
-        """
-        ╔═══════════════════════════════════════════╗
-        ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
-        ║  ░░██╗░░██╗██████╗░██████╗░██████╗░░░  ║
-        ║  ░░██║░░██║██╔══██╗██╔══██╗██╔══██╗░  ║
-        ║  ░░███████║██████╔╝██████╔╝██████╔╝░  ║
-        ║  ░░██╔══██║██╔══██╗██╔══██╗██╔══██╗░  ║
-        ║  ░░██║░░██║██║░░██║██║░░██║██║░░██║░  ║
-        ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
-        ╚═══════════════════════════════════════════╝
+        f"""
+        {PURPLE}   ╔═══════════════════════════════════════════════════╗
+        {PURPLE}   ║  {GREEN}███████╗░█████╗░██╗░░░██╗███╗░░██╗██████╗░  {PURPLE}║
+        {PURPLE}   ║  {GREEN}██╔════╝██╔══██╗╚██╗░██╔╝████╗░██║██╔══██╗  {PURPLE}║
+        {PURPLE}   ║  {GREEN}█████╗░░██║░░██║░╚████╔╝░██╔██╗██║██║░░██║  {PURPLE}║
+        {PURPLE}   ║  {GREEN}██╔══╝░░██║░░██║░░╚██╔╝░░██║╚████║██║░░██║  {PURPLE}║
+        {PURPLE}   ║  {GREEN}██║░░░░░╚█████╔╝░░░██║░░░██║░╚███║██████╔╝  {PURPLE}║
+        {PURPLE}   ║  {GREEN}╚═╝░░░░░░╚════╝░░░░╚═╝░░░╚═╝░░╚══╝╚═════╝░  {PURPLE}║
+        {PURPLE}   ╚═══════════════════════════════════════════════════╝{RESET}
         """
     ]
     
-    # Animasi frame berganti
-    for _ in range(duration * 4):
+    bar_chars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
+    
+    # Animasi loop selama duration detik
+    for _ in range(duration * 6):
         for frame in frames:
+            # Clear layar
             sys.stdout.write('\033[H\033[J')
+            
             print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
             print(f"  {GREEN}🎵 VISUALIZER{RESET}")
             print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
             print(frame)
             print(f"\n  {WHITE}🎶 {title}{RESET}")
             
-            # Equalizer animasi
-            bars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
-            eq = ''.join(random.choice(bars) for _ in range(30))
-            print(f"  {GREEN}{eq}{RESET}")
+            # Equalizer bergerak random
+            eq = ''.join(random.choice(bar_chars) for _ in range(35))
+            print(f"  {CYAN}{eq}{RESET}")
             
-            # Volume bar
-            vol = random.randint(30, 100)
-            bar = '█' * (vol // 5) + '░' * (20 - vol // 5)
+            # Volume bar bergerak random
+            vol = random.randint(20, 100)
+            bar_len = vol // 5
+            bar = '█' * bar_len + '░' * (20 - bar_len)
             print(f"  {WHITE}Volume: {GREEN}[{bar}] {vol}%{RESET}")
             
-            time.sleep(0.15)
-    
-    # Tampilan akhir
-    sys.stdout.write('\033[H\033[J')
-    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {GREEN}🎵 VISUALIZER{RESET}")
-    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"""
-    {PURPLE}   ╔═══════════════════════════════════════════╗
-    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
-    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
-    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
-    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
-    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
-    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
-    {PURPLE}   ║  {GREEN}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  {PURPLE}║
-    {PURPLE}   ╚═══════════════════════════════════════════╝{RESET}
-    """)
-    print(f"  {WHITE}🎶 {title}{RESET}")
-    print(f"  {GREEN}⏳ Memutar... (Ctrl+C untuk stop){RESET}")
-    print(f"{CYAN}  ════════════════════════════════════════════{RESET}\n")
+            # Progress bar simulasi
+            prog = random.randint(5, 95)
+            prog_bar = '█' * (prog // 5) + '░' * (20 - prog // 5)
+            print(f"  {WHITE}Progres: {BLUE}[{prog_bar}] {prog}%{RESET}")
+            
+            time.sleep(0.12)
 
 def play_song(url, title):
     """Putar lagu dengan visualizer"""
     
-    # Jalankan visualizer dulu
+    # Tampilkan visualizer dulu sebelum lagu diputer
     visualizer_animation(title, duration=3)
     
+    # Clear layar dan tampilkan status
+    sys.stdout.write('\033[H\033[J')
+    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+    print(f"  {GREEN}🎵 PUTAR LAGU{RESET}")
+    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+    print(f"  {WHITE}🎶 {title}{RESET}")
+    print(f"  {CYAN}⏳ Memutar... (Ctrl+C untuk stop){RESET}")
+    print(f"{CYAN}  ════════════════════════════════════════════{RESET}\n")
+    
     try:
-        # Coba pake mpv (Termux)
         process = subprocess.Popen(
-            ['mpv', '--no-video', '--really-quiet', url],
+            ['mpv', '--no-video', '--really-quiet', '--msg-level=all=error', url],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
         print(f"  {GREEN}✅ Lagu diputar via mpv{RESET}")
         print(f"  {YELLOW}💡 Tekan Ctrl+C untuk stop lagu{RESET}")
         
-        # Tunggu proses sampai selesai atau di-stop
         try:
             process.wait()
         except KeyboardInterrupt:
@@ -144,53 +140,19 @@ def play_song(url, title):
             
     except FileNotFoundError:
         try:
-            # Coba pake termux-open (Android)
             subprocess.Popen(['termux-open', url])
             print(f"  {GREEN}✅ Lagu diputar via termux-open{RESET}")
         except:
             try:
-                # Coba pake xdg-open (Linux)
                 subprocess.Popen(['xdg-open', url])
                 print(f"  {GREEN}✅ Lagu diputar via xdg-open{RESET}")
             except:
                 try:
-                    # Coba pake start (Windows)
                     subprocess.Popen(['start', url], shell=True)
                     print(f"  {GREEN}✅ Lagu diputar via start{RESET}")
                 except:
                     print(f"  {RED}❌ Gagal putar lagu. Install mpv:{RESET}")
                     print(f"  {YELLOW}   pkg install mpv{RESET}")
-
-def play_music():
-    """Menu pilih lagu"""
-    while True:
-        clear()
-        show_banner()
-        
-        print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {GREEN}🎵 PILIH LAGU{RESET}")
-        print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
-        
-        for i, song in enumerate(SONGS, 1):
-            print(f"  {GREEN}{i}{WHITE}. {song['title']}{RESET}")
-        print(f"  {RED}{len(SONGS)+1}{WHITE}. Kembali ke menu utama{RESET}")
-        
-        choice = input(f"\n  {YELLOW}➜ pilih (1-{len(SONGS)+1}): {RESET}").strip()
-        
-        if choice.isdigit():
-            idx = int(choice)
-            if 1 <= idx <= len(SONGS):
-                play_song(SONGS[idx-1]['url'], SONGS[idx-1]['title'])
-                print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
-                input()
-            elif idx == len(SONGS) + 1:
-                return
-            else:
-                print(f"  {RED}Pilihan salah!{RESET}")
-                time.sleep(1)
-        else:
-            print(f"  {RED}Pilihan salah!{RESET}")
-            time.sleep(1)
 
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
@@ -232,7 +194,7 @@ def show_banner():
 {RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
 {WHITE}╔══════════════════════════════════════════════════════════════╗
-{WHITE}║  {GREEN}COPY TOOLS - WITH MUSIC VISUALIZER{WHITE}                  ║
+{WHITE}║  {GREEN}COPY TOOLS - WITH VISUALIZER FIXED{WHITE}                   ║
 {WHITE}║  {CYAN}Created by : egaaX official{WHITE}                              ║
 {WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
@@ -271,7 +233,7 @@ def get_downloads_path():
     return os.getcwd()
 
 # ============================================================
-# DEEP CLONE ENGINE
+# DEEP CLONE ENGINE (SAMA KAYAK SEBELUMNYA)
 # ============================================================
 class DeepClone:
     def __init__(self, url, output_dir):
@@ -364,7 +326,6 @@ class DeepClone:
     def process_html(self, content):
         soup = BeautifulSoup(content, 'html.parser')
         
-        # CSS
         for tag in soup.find_all('link'):
             if tag.get('rel') and 'stylesheet' in tag.get('rel'):
                 href = tag.get('href')
@@ -377,7 +338,6 @@ class DeepClone:
                         if local:
                             tag['href'] = os.path.basename(local)
         
-        # JS
         for tag in soup.find_all('script'):
             src = tag.get('src')
             if src and not src.startswith(('data:', '//')):
@@ -394,7 +354,6 @@ class DeepClone:
                 for api in apis:
                     self.api_endpoints.add(api)
         
-        # Images
         for tag in soup.find_all(['img', 'source']):
             src = tag.get('src')
             if src and not src.startswith(('data:', 'blob:', '//')):
@@ -406,7 +365,6 @@ class DeepClone:
                     if local:
                         tag['src'] = os.path.basename(local)
         
-        # Fonts
         for tag in soup.find_all('link'):
             href = tag.get('href')
             if href and any(x in href.lower() for x in ['font', '.woff', '.ttf', '.otf', '.eot']):
@@ -490,7 +448,6 @@ class DeepClone:
                 json.dump(list(self.api_endpoints), f, indent=2)
             success(f"✅ API: {len(self.api_endpoints)} endpoints")
         
-        # Hapus folder kosong
         for folder in ['css', 'js', 'images', 'api', 'fonts']:
             folder_path = os.path.join(self.output_dir, folder)
             if os.path.exists(folder_path) and not os.listdir(folder_path):
@@ -515,9 +472,6 @@ class DeepClone:
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"\n{GREEN}✅ Selesai! {WHITE}{self.output_dir}{RESET}")
 
-# ============================================================
-# GET NEXT FOLDER
-# ============================================================
 def get_next_clone_folder(base_path):
     i = 1
     while True:
@@ -527,8 +481,38 @@ def get_next_clone_folder(base_path):
         i += 1
 
 # ============================================================
-# FITUR
+# MENU FUNCTIONS
 # ============================================================
+def play_music():
+    while True:
+        clear()
+        show_banner()
+        
+        print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {GREEN}🎵 PILIH LAGU{RESET}")
+        print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
+        
+        for i, song in enumerate(SONGS, 1):
+            print(f"  {GREEN}{i}{WHITE}. {song['title']}{RESET}")
+        print(f"  {RED}{len(SONGS)+1}{WHITE}. Kembali ke menu utama{RESET}")
+        
+        choice = input(f"\n  {YELLOW}➜ pilih (1-{len(SONGS)+1}): {RESET}").strip()
+        
+        if choice.isdigit():
+            idx = int(choice)
+            if 1 <= idx <= len(SONGS):
+                play_song(SONGS[idx-1]['url'], SONGS[idx-1]['title'])
+                print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
+                input()
+            elif idx == len(SONGS) + 1:
+                return
+            else:
+                print(f"  {RED}Pilihan salah!{RESET}")
+                time.sleep(1)
+        else:
+            print(f"  {RED}Pilihan salah!{RESET}")
+            time.sleep(1)
+
 def clone_deep():
     url = input(f"  {WHITE}URL: {RESET}").strip()
     if not url.startswith(('http://', 'https://')):
@@ -537,7 +521,6 @@ def clone_deep():
     download_path = get_downloads_path()
     base_dir = os.path.join(download_path, 'BONGKAR_WEB')
     os.makedirs(base_dir, exist_ok=True)
-    
     output_dir = get_next_clone_folder(base_dir)
     
     clone = DeepClone(url, output_dir)
