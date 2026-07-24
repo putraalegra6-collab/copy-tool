@@ -4,11 +4,14 @@ import re
 import json
 import hashlib
 import requests
+import threading
+import time
+import subprocess
 from datetime import datetime
 from urllib.parse import urljoin, urlparse, urldefrag
 from bs4 import BeautifulSoup
 
-VERSION = '4.0'
+VERSION = '4.2'
 AUTHOR = 'egaaX official'
 
 # ============================================================
@@ -22,6 +25,83 @@ RED = '\033[91m'
 BLUE = '\033[94m'
 PURPLE = '\033[95m'
 RESET = '\033[0m'
+
+# ============================================================
+# DAFTAR LAGU
+# ============================================================
+SONGS = [
+    {'title': 'Yang Patah Tumbuh, Yang Hilang Berganti', 'url': 'https://file-egabox.lovable.app/f/3ee2j2.mp3'},
+    {'title': 'Sampai Jadi Debu', 'url': 'https://file-egabox.lovable.app/f/6ohfdz.mp3'},
+    {'title': 'Hati-Hati Di Jalan', 'url': 'https://file-egabox.lovable.app/f/8ao0r1.mp3'},
+    {'title': 'Iqro', 'url': 'https://file-egabox.lovable.app/f/219ifp.mp3'},
+    {'title': 'Bertaut', 'url': 'https://file-egabox.lovable.app/f/p12pr0.mp3'},
+]
+
+# ============================================================
+# FUNGSI PUTAR LAGU
+# ============================================================
+def play_song(url, title):
+    """Putar lagu pake mpv (Termux) atau default player"""
+    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+    print(f"  {GREEN}🎵 PUTAR LAGU{RESET}")
+    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+    print(f"  {WHITE}🎶 {title}{RESET}")
+    print(f"  {CYAN}⏳ Memutar... (Ctrl+C untuk stop){RESET}")
+    print(f"{CYAN}  ════════════════════════════════════════════{RESET}\n")
+    
+    try:
+        # Coba pake mpv (Termux)
+        subprocess.Popen(['mpv', '--no-video', url])
+        print(f"  {GREEN}✅ Lagu diputar via mpv{RESET}")
+    except:
+        try:
+            # Coba pake termux-open (Android)
+            subprocess.Popen(['termux-open', url])
+            print(f"  {GREEN}✅ Lagu diputar via termux-open{RESET}")
+        except:
+            try:
+                # Coba pake xdg-open (Linux)
+                subprocess.Popen(['xdg-open', url])
+                print(f"  {GREEN}✅ Lagu diputar via xdg-open{RESET}")
+            except:
+                try:
+                    # Coba pake start (Windows)
+                    subprocess.Popen(['start', url], shell=True)
+                    print(f"  {GREEN}✅ Lagu diputar via start{RESET}")
+                except:
+                    print(f"  {RED}❌ Gagal putar lagu. Install mpv:{RESET}")
+                    print(f"  {YELLOW}   pkg install mpv{RESET}")
+
+def play_music():
+    """Menu pilih lagu"""
+    while True:
+        clear()
+        show_banner()
+        
+        print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {GREEN}🎵 PILIH LAGU{RESET}")
+        print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
+        
+        for i, song in enumerate(SONGS, 1):
+            print(f"  {GREEN}{i}{WHITE}. {song['title']}{RESET}")
+        print(f"  {RED}{len(SONGS)+1}{WHITE}. Kembali ke menu utama{RESET}")
+        
+        choice = input(f"\n  {YELLOW}➜ pilih (1-{len(SONGS)+1}): {RESET}").strip()
+        
+        if choice.isdigit():
+            idx = int(choice)
+            if 1 <= idx <= len(SONGS):
+                play_song(SONGS[idx-1]['url'], SONGS[idx-1]['title'])
+                print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
+                input()
+            elif idx == len(SONGS) + 1:
+                return
+            else:
+                print(f"  {RED}Pilihan salah!{RESET}")
+                time.sleep(1)
+        else:
+            print(f"  {RED}Pilihan salah!{RESET}")
+            time.sleep(1)
 
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
@@ -63,12 +143,12 @@ def show_banner():
 {RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
 {WHITE}╔══════════════════════════════════════════════════════════════╗
-{WHITE}║  {GREEN}COPY TOOLS - WEBSITE {WHITE}                                 ║
+{WHITE}║  {GREEN}COPY TOOLS  - WEBSITE {WHITE}                         ║
 {WHITE}║  {CYAN}Created by : egaaX official{WHITE}                              ║
 {WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
 {WHITE}║  {CYAN}📦 Clone: HTML | CSS | JS | Images | API{WHITE}                ║
-{WHITE}║  {CYAN}📁 Save : clone_1/, clone_2/, clone_3/ ...{WHITE}             ║
+{WHITE}║  {CYAN}🎵 Music: 5 Lagu siap diputar{WHITE}                           ║
 {WHITE}╚══════════════════════════════════════════════════════════════╝
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
 """)
@@ -119,7 +199,6 @@ class DeepClone:
         }
         
     def create_folders(self):
-        # Cuma bikin folder yang ada isinya
         folders = ['css', 'js', 'images', 'api']
         for f in folders:
             os.makedirs(os.path.join(self.output_dir, f), exist_ok=True)
@@ -238,7 +317,7 @@ class DeepClone:
                     if local:
                         tag['src'] = os.path.basename(local)
         
-        # Fonts (kalo ada)
+        # Fonts
         for tag in soup.find_all('link'):
             href = tag.get('href')
             if href and any(x in href.lower() for x in ['font', '.woff', '.ttf', '.otf', '.eot']):
@@ -252,7 +331,6 @@ class DeepClone:
                         if local:
                             tag['href'] = os.path.basename(local)
         
-        # Extract API dari HTML
         apis = self.extract_apis(content)
         for api in apis:
             self.api_endpoints.add(api)
@@ -283,7 +361,6 @@ class DeepClone:
         print(f"  {WHITE}📁 Output  : {CYAN}{self.output_dir}{RESET}")
         print()
         
-        # Download index
         print(f"  {GREEN}⏳ Downloading...{RESET}")
         res = self.safe_request(self.url, timeout=30)
         if not res:
@@ -293,16 +370,13 @@ class DeepClone:
         self.base_url = f"{res.url.rstrip('/')}/"
         content = res.text
         
-        # Process HTML
         print(f"  {GREEN}⏳ Processing...{RESET}")
         html_content = self.process_html(content)
         
-        # Save index
         with open(os.path.join(self.output_dir, 'index.html'), 'w', encoding='utf-8') as f:
             f.write(html_content)
         success("✅ index.html")
         
-        # Process CSS
         if self.assets['css']:
             print(f"  {GREEN}⏳ CSS ({len(self.assets['css'])} files)...{RESET}")
             for css_url in self.assets['css']:
@@ -313,7 +387,6 @@ class DeepClone:
                     with open(os.path.join(self.output_dir, 'css', filename), 'w', encoding='utf-8') as f:
                         f.write(processed)
         
-        # Process JS
         if self.assets['js']:
             print(f"  {GREEN}⏳ JS ({len(self.assets['js'])} files)...{RESET}")
             for js_url in self.assets['js']:
@@ -323,7 +396,6 @@ class DeepClone:
                     with open(os.path.join(self.output_dir, 'js', filename), 'w', encoding='utf-8') as f:
                         f.write(js_res.text)
         
-        # Save API
         if self.api_endpoints:
             with open(os.path.join(self.output_dir, 'api', 'endpoints.json'), 'w') as f:
                 json.dump(list(self.api_endpoints), f, indent=2)
@@ -335,7 +407,6 @@ class DeepClone:
             if os.path.exists(folder_path) and not os.listdir(folder_path):
                 os.rmdir(folder_path)
         
-        # Summary
         print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"  {GREEN}📊 HASIL CLONE{RESET}")
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
@@ -515,41 +586,40 @@ def list_files():
 # MENU UTAMA
 # ============================================================
 def main():
-    show_banner()
-    
-    print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {WHITE}📌 COPY TOOLS - FINAL{RESET}")
-    print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
-    
-    print(f"\n{CYAN}  📌 PILIH:{RESET}")
-    print(f"  {GREEN}1{WHITE}  DEEP CLONE (Full page){RESET}")
-    print(f"  {GREEN}2{WHITE}  Check HTTP Status{RESET}")
-    print(f"  {GREEN}3{WHITE}  Get Page Metadata{RESET}")
-    print(f"  {GREEN}4{WHITE}  Lihat Hasil Clone{RESET}")
-    print(f"  {RED}5{WHITE}  Exit{RESET}")
-    
-    choice = input(f"\n  {YELLOW}➜ pilih (1-5): {RESET}").strip()
-    
-    if choice == '1':
-        clone_deep()
-        main()
-    elif choice == '2':
-        check_status()
-        main()
-    elif choice == '3':
-        get_metadata()
-        main()
-    elif choice == '4':
-        list_files()
-        main()
-    elif choice == '5':
-        print(f"\n{GREEN}  copy. save. conquer.{RESET}")
-        sys.exit(0)
-    else:
-        error("Pilihan salah")
-        print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
-        input()
-        main()
+    while True:
+        show_banner()
+        
+        print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {WHITE}📌 COPY TOOLS - WITH 5 SONGS{RESET}")
+        print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
+        
+        print(f"\n{CYAN}  📌 PILIH:{RESET}")
+        print(f"  {GREEN}1{WHITE}  DEEP CLONE (Full page){RESET}")
+        print(f"  {GREEN}2{WHITE}  Check HTTP Status{RESET}")
+        print(f"  {GREEN}3{WHITE}  Get Page Metadata{RESET}")
+        print(f"  {GREEN}4{WHITE}  Lihat Hasil Clone{RESET}")
+        print(f"  {GREEN}5{WHITE}  🎵 PUTAR LAGU{RESET}")
+        print(f"  {RED}6{WHITE}  Exit{RESET}")
+        
+        choice = input(f"\n  {YELLOW}➜ pilih (1-6): {RESET}").strip()
+        
+        if choice == '1':
+            clone_deep()
+        elif choice == '2':
+            check_status()
+        elif choice == '3':
+            get_metadata()
+        elif choice == '4':
+            list_files()
+        elif choice == '5':
+            play_music()
+        elif choice == '6':
+            print(f"\n{GREEN}  copy. save. conquer.{RESET}")
+            sys.exit(0)
+        else:
+            error("Pilihan salah!")
+            print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
+            input()
 
 if __name__ == '__main__':
     try:
