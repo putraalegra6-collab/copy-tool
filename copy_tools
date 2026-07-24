@@ -10,7 +10,7 @@ from datetime import datetime
 from urllib.parse import urljoin, urlparse, urldefrag
 from bs4 import BeautifulSoup
 
-VERSION = '2.0'
+VERSION = '3.0'
 AUTHOR = 'egaaX official'
 
 # ============================================================
@@ -65,12 +65,13 @@ def show_banner():
 {RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
 {WHITE}╔══════════════════════════════════════════════════════════════╗
-{WHITE}║  {GREEN}COPY TOOLS v2.0 - DEEP CLONE EDITION{WHITE}                    ║
+{WHITE}║  {GREEN}COPY TOOLS - FOLDER PER CLONE{WHITE}                    ║
 {WHITE}║  {CYAN}Created by : egaaX official{WHITE}                              ║
 {WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
 {WHITE}║  {CYAN}📦 Clone: HTML | CSS | JS | Images | Fonts | API{WHITE}        ║
-{WHITE}║  {CYAN}🔍 Scan : Subdomains | Emails | Social Media{WHITE}            ║
+{WHITE}║  {CYAN}🔍 Scan : Emails | Social Media | Subdomains{WHITE}            ║
+{WHITE}║  {CYAN}📁 Save : clone_1/, clone_2/, clone_3/ ...{WHITE}             ║
 {WHITE}╚══════════════════════════════════════════════════════════════╝
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
 """)
@@ -104,7 +105,7 @@ def get_downloads_path():
     return os.getcwd()
 
 # ============================================================
-# DEEP CLONE ENGINE
+# DEEP CLONE ENGINE - FOLDER PER CLONE
 # ============================================================
 class DeepClone:
     def __init__(self, url, output_dir):
@@ -118,6 +119,7 @@ class DeepClone:
         self.subdomains = set()
         self.total_files = 0
         self.total_size = 0
+        self.assets = {'css': [], 'js': [], 'images': [], 'fonts': []}
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'
         }
@@ -219,7 +221,6 @@ class DeepClone:
     
     def process_html(self, content):
         soup = BeautifulSoup(content, 'html.parser')
-        assets = {'css': [], 'js': [], 'images': [], 'fonts': []}
         
         # CSS
         for tag in soup.find_all('link'):
@@ -229,7 +230,7 @@ class DeepClone:
                     full_url = urljoin(self.base_url, href)
                     full_url = urldefrag(full_url)[0]
                     if full_url:
-                        assets['css'].append(full_url)
+                        self.assets['css'].append(full_url)
                         local = self.download_file(full_url, os.path.join(self.output_dir, 'css'))
                         if local:
                             tag['href'] = os.path.basename(local)
@@ -241,7 +242,7 @@ class DeepClone:
                 full_url = urljoin(self.base_url, src)
                 full_url = urldefrag(full_url)[0]
                 if full_url:
-                    assets['js'].append(full_url)
+                    self.assets['js'].append(full_url)
                     local = self.download_file(full_url, os.path.join(self.output_dir, 'js'))
                     if local:
                         tag['src'] = os.path.basename(local)
@@ -260,7 +261,7 @@ class DeepClone:
                 full_url = urljoin(self.base_url, src)
                 full_url = urldefrag(full_url)[0]
                 if full_url:
-                    assets['images'].append(full_url)
+                    self.assets['images'].append(full_url)
                     local = self.download_file(full_url, os.path.join(self.output_dir, 'images'))
                     if local:
                         tag['src'] = os.path.basename(local)
@@ -273,7 +274,7 @@ class DeepClone:
                     full_url = urljoin(self.base_url, href)
                     full_url = urldefrag(full_url)[0]
                     if full_url:
-                        assets['fonts'].append(full_url)
+                        self.assets['fonts'].append(full_url)
                         local = self.download_file(full_url, os.path.join(self.output_dir, 'fonts'))
                         if local:
                             tag['href'] = os.path.basename(local)
@@ -293,7 +294,7 @@ class DeepClone:
             if sub not in ['www', 'api', 'app', 'dev', 'test', 'staging', 'mail', 'ftp']:
                 self.subdomains.add(sub + '.' + domain)
         
-        return str(soup), assets
+        return str(soup)
     
     def process_css(self, content, base_url):
         pattern = r'url\s*\(\s*["\']?([^"\')\s]+)["\']?\s*\)'
@@ -331,7 +332,7 @@ class DeepClone:
         
         # Process HTML
         print(f"  {GREEN}⏳ Processing HTML & assets...{RESET}")
-        html_content, assets = self.process_html(content)
+        html_content = self.process_html(content)
         
         # Save index
         with open(os.path.join(self.output_dir, 'index.html'), 'w', encoding='utf-8') as f:
@@ -339,9 +340,9 @@ class DeepClone:
         success("index.html saved")
         
         # Process CSS files
-        if assets['css']:
-            print(f"  {GREEN}⏳ Processing CSS ({len(assets['css'])} files)...{RESET}")
-            for css_url in assets['css']:
+        if self.assets['css']:
+            print(f"  {GREEN}⏳ Processing CSS ({len(self.assets['css'])} files)...{RESET}")
+            for css_url in self.assets['css']:
                 css_res = self.safe_request(css_url, timeout=15)
                 if css_res:
                     processed = self.process_css(css_res.text, css_url)
@@ -350,9 +351,9 @@ class DeepClone:
                         f.write(processed)
         
         # Process JS files
-        if assets['js']:
-            print(f"  {GREEN}⏳ Processing JavaScript ({len(assets['js'])} files)...{RESET}")
-            for js_url in assets['js']:
+        if self.assets['js']:
+            print(f"  {GREEN}⏳ Processing JavaScript ({len(self.assets['js'])} files)...{RESET}")
+            for js_url in self.assets['js']:
                 js_res = self.safe_request(js_url, timeout=15)
                 if js_res:
                     filename = os.path.basename(js_url.split('?')[0]) or hashlib.md5(js_url.encode()).hexdigest()[:12] + '.js'
@@ -385,10 +386,10 @@ class DeepClone:
         print(f"  {GREEN}📊 CLONE SUMMARY{RESET}")
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"  {WHITE}📄 HTML      : {GREEN}1 file{RESET}")
-        print(f"  {WHITE}🎨 CSS       : {GREEN}{len(assets['css'])} files{RESET}")
-        print(f"  {WHITE}⚡ JS        : {GREEN}{len(assets['js'])} files{RESET}")
-        print(f"  {WHITE}🖼️ Images    : {GREEN}{len(assets['images'])} files{RESET}")
-        print(f"  {WHITE}🔤 Fonts     : {GREEN}{len(assets['fonts'])} files{RESET}")
+        print(f"  {WHITE}🎨 CSS       : {GREEN}{len(self.assets['css'])} files{RESET}")
+        print(f"  {WHITE}⚡ JS        : {GREEN}{len(self.assets['js'])} files{RESET}")
+        print(f"  {WHITE}🖼️ Images    : {GREEN}{len(self.assets['images'])} files{RESET}")
+        print(f"  {WHITE}🔤 Fonts     : {GREEN}{len(self.assets['fonts'])} files{RESET}")
         print(f"  {WHITE}📦 Total     : {GREEN}{self.total_files} files{RESET}")
         print(f"  {WHITE}💾 Size      : {GREEN}{self.total_size:,} bytes{RESET}")
         print(f"  {WHITE}🔗 API       : {GREEN}{len(self.api_endpoints)} endpoints{RESET}")
@@ -399,6 +400,18 @@ class DeepClone:
         print(f"\n{GREEN}✅ Clone complete! Saved to: {WHITE}{self.output_dir}{RESET}")
 
 # ============================================================
+# GET NEXT FOLDER NUMBER
+# ============================================================
+def get_next_clone_folder(base_path):
+    """Cari folder clone_1, clone_2, dst"""
+    i = 1
+    while True:
+        folder = os.path.join(base_path, f'clone_{i}')
+        if not os.path.exists(folder):
+            return folder
+        i += 1
+
+# ============================================================
 # TOOL FUNCTIONS
 # ============================================================
 def clone_deep():
@@ -407,7 +420,11 @@ def clone_deep():
         url = 'https://' + url
     
     download_path = get_downloads_path()
-    output_dir = os.path.join(download_path, 'BONGKAR_WEB')
+    base_dir = os.path.join(download_path, 'BONGKAR_WEB')
+    os.makedirs(base_dir, exist_ok=True)
+    
+    # Cari folder clone_1, clone_2, dst
+    output_dir = get_next_clone_folder(base_dir)
     
     clone = DeepClone(url, output_dir)
     clone.run()
@@ -479,36 +496,67 @@ def get_metadata():
 
 def list_files():
     download_path = get_downloads_path()
-    output_dir = os.path.join(download_path, 'BONGKAR_WEB')
+    base_dir = os.path.join(download_path, 'BONGKAR_WEB')
     
-    if not os.path.exists(output_dir):
+    if not os.path.exists(base_dir):
         warning("BONGKAR_WEB folder not found")
         print(f"\n{YELLOW}  press Enter to continue...{RESET}")
         input()
         return
     
-    files = []
-    for root, dirs, filenames in os.walk(output_dir):
-        for f in filenames:
-            path = os.path.join(root, f)
-            size = os.path.getsize(path)
-            rel = os.path.relpath(path, output_dir)
-            files.append((rel, size))
+    # Cari semua folder clone
+    clone_folders = []
+    for item in os.listdir(base_dir):
+        item_path = os.path.join(base_dir, item)
+        if os.path.isdir(item_path) and item.startswith('clone_'):
+            clone_folders.append(item)
     
-    if not files:
-        warning("No files found")
+    if not clone_folders:
+        warning("No clone folders found")
         print(f"\n{YELLOW}  press Enter to continue...{RESET}")
         input()
         return
     
+    clone_folders.sort()
+    
     print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {BLUE}📂 FILES IN BONGKAR_WEB ({len(files)} total){RESET}")
+    print(f"  {BLUE}📂 CLONE FOLDERS ({len(clone_folders)} total){RESET}")
     print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-    for f, size in sorted(files)[:50]:
-        print(f"  {WHITE}📄 {f} ({size:,} bytes){RESET}")
-    if len(files) > 50:
-        print(f"  {YELLOW}... and {len(files) - 50} more{RESET}")
-    print(f"\n  {WHITE}📂 Folder: {CYAN}{output_dir}{RESET}")
+    
+    total_files = 0
+    total_size = 0
+    
+    for folder in clone_folders:
+        folder_path = os.path.join(base_dir, folder)
+        file_count = 0
+        folder_size = 0
+        
+        for root, dirs, files in os.walk(folder_path):
+            file_count += len(files)
+            for f in files:
+                path = os.path.join(root, f)
+                folder_size += os.path.getsize(path)
+        
+        total_files += file_count
+        total_size += folder_size
+        
+        # Tampilkan struktur folder
+        print(f"\n  {GREEN}📁 {folder}{RESET} ({file_count} files, {folder_size:,} bytes)")
+        
+        # Tampilkan isi folder
+        for sub in ['html', 'css', 'js', 'images', 'fonts', 'api', 'data']:
+            sub_path = os.path.join(folder_path, sub)
+            if os.path.exists(sub_path):
+                count = len([f for f in os.listdir(sub_path) if os.path.isfile(os.path.join(sub_path, f))])
+                if count > 0:
+                    print(f"     {WHITE}📄 {sub}/ → {CYAN}{count} files{RESET}")
+    
+    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+    print(f"  {WHITE}📦 Total   : {GREEN}{total_files} files{RESET}")
+    print(f"  {WHITE}💾 Total   : {GREEN}{total_size:,} bytes{RESET}")
+    print(f"  {WHITE}📂 Folder  : {CYAN}{base_dir}{RESET}")
+    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+    
     print(f"\n{YELLOW}  press Enter to continue...{RESET}")
     input()
 
@@ -519,14 +567,14 @@ def main():
     show_banner()
     
     print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {WHITE}⚠️  DEEP CLONE TOOLS{RESET}")
+    print(f"  {WHITE}⚠️  DEEP CLONE TOOLS - FOLDER PER CLONE{RESET}")
     print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
     
     print(f"\n{CYAN}  📌 CHOOSE FEATURE:{RESET}")
     print(f"  {GREEN}1{WHITE}  DEEP CLONE (Full page + assets){RESET}")
     print(f"  {GREEN}2{WHITE}  Check HTTP Status{RESET}")
     print(f"  {GREEN}3{WHITE}  Get Page Metadata{RESET}")
-    print(f"  {GREEN}4{WHITE}  View Cloned Files{RESET}")
+    print(f"  {GREEN}4{WHITE}  View All Cloned Folders{RESET}")
     print(f"  {RED}5{WHITE}  Exit{RESET}")
     
     choice = input(f"\n  {YELLOW}➜ select (1-5): {RESET}").strip()
