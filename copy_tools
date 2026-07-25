@@ -1,16 +1,15 @@
 import os
 import sys
-import subprocess
 import time
 import requests
-from datetime import datetime
-from bs4 import BeautifulSoup
+import re
 import json
 import hashlib
-import re
+from datetime import datetime
 from urllib.parse import urljoin, urlparse, urldefrag
+from bs4 import BeautifulSoup
 
-VERSION = '5.2'
+VERSION = '6.0'
 AUTHOR = 'egaaX official'
 
 GREEN = '\033[92m'
@@ -22,109 +21,6 @@ BLUE = '\033[94m'
 PURPLE = '\033[95m'
 RESET = '\033[0m'
 
-# ============================================================
-# DAFTAR LAGU
-# ============================================================
-SONGS = [
-    {'title': 'Yang Patah Tumbuh, Yang Hilang Berganti', 'url': 'https://file-egabox.lovable.app/f/3ee2j2.mp3'},
-    {'title': 'Sampai Jadi Debu', 'url': 'https://file-egabox.lovable.app/f/6ohfdz.mp3'},
-    {'title': 'Hati-Hati Di Jalan', 'url': 'https://file-egabox.lovable.app/f/8ao0r1.mp3'},
-    {'title': 'Iqro', 'url': 'https://file-egabox.lovable.app/f/219ifp.mp3'},
-    {'title': 'Bertaut', 'url': 'https://file-egabox.lovable.app/f/p12pr0.mp3'},
-]
-
-# ============================================================
-# PLAY SONG — MPV DIRECT
-# ============================================================
-def play_song(url, title):
-    """Putar lagu langsung di Termux pake mpv"""
-    
-    clear()
-    
-    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {GREEN}🎵 PUTAR LAGU — MPV{RESET}")
-    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {WHITE}🎶 {title}{RESET}")
-    print(f"  {CYAN}⏳ Memutar langsung di Termux...{RESET}\n")
-    
-    # ── Cek mpv ──
-    try:
-        subprocess.run(['mpv', '--version'], capture_output=True, check=True)
-    except:
-        print(f"  {RED}❌ mpv tidak terinstall!{RESET}")
-        print(f"  {YELLOW}   Install: pkg install mpv{RESET}")
-        print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
-        input()
-        return
-    
-    # ── Putar pake mpv (DIRECT di Termux) ──
-    try:
-        process = subprocess.Popen(
-            [
-                'mpv',
-                '--no-video',
-                '--really-quiet',
-                '--msg-level=all=error',
-                '--volume=100',
-                '--volume-max=200',
-                '--audio-normalize=yes',
-                '--vo=null',
-                url
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-        print(f"  {GREEN}✅ Lagu diputar via mpv{RESET}")
-        print(f"  {YELLOW}🔊 Suara dari speaker HP{RESET}")
-        print(f"  {YELLOW}⏹️  Tekan Ctrl+C untuk stop{RESET}\n")
-        print(f"  {CYAN}────────────────────────────────────────────{RESET}")
-        
-        try:
-            process.wait()
-        except KeyboardInterrupt:
-            process.terminate()
-            print(f"\n  {YELLOW}⏹️ Lagu dihentikan{RESET}")
-            
-    except Exception as e:
-        print(f"  {RED}❌ Error: {e}{RESET}")
-    
-    print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
-    input()
-
-# ============================================================
-# MENU MUSIC
-# ============================================================
-def play_music():
-    while True:
-        clear()
-        show_banner()
-        
-        print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {GREEN}🎵 PILIH LAGU — MPV DIRECT{RESET}")
-        print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
-        
-        for i, song in enumerate(SONGS, 1):
-            print(f"  {GREEN}{i}{WHITE}. {song['title']}{RESET}")
-        print(f"  {RED}{len(SONGS)+1}{WHITE}. Kembali ke menu utama{RESET}")
-        
-        choice = input(f"\n  {YELLOW}➜ pilih (1-{len(SONGS)+1}): {RESET}").strip()
-        
-        if choice.isdigit():
-            idx = int(choice)
-            if 1 <= idx <= len(SONGS):
-                play_song(SONGS[idx-1]['url'], SONGS[idx-1]['title'])
-            elif idx == len(SONGS) + 1:
-                return
-            else:
-                print(f"  {RED}Pilihan salah!{RESET}")
-                time.sleep(1)
-        else:
-            print(f"  {RED}Pilihan salah!{RESET}")
-            time.sleep(1)
-
-# ============================================================
-# CLEAR + BANNER
-# ============================================================
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
 
@@ -165,18 +61,160 @@ def show_banner():
 {RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
 {WHITE}╔══════════════════════════════════════════════════════════════╗
-{WHITE}║  {GREEN}COPY TOOLS WEBSITE - PLAY MUSIC{WHITE}                      ║
+{WHITE}║  {GREEN}COPY TOOLS - WEBSITE {WHITE}                                 ║
 {WHITE}║  {CYAN}Created by : egaaX official{WHITE}                              ║
 {WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
-{WHITE}║  {CYAN}🎵 Putar (LAGU){WHITE}                 ║
 {WHITE}║  {CYAN}📦 Clone: HTML | CSS | JS | Images | API{WHITE}                ║
+{WHITE}║  {CYAN}🔍 Scan: Links | Images | JS | CSS | API{WHITE}                ║
 {WHITE}╚══════════════════════════════════════════════════════════════╝
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
 """)
 
 # ============================================================
-# DEEP CLONE ENGINE (SAMA KAYAK SEBELUMNYA)
+# TOOL 5: SCAN WEBSITE
+# ============================================================
+def scan_website():
+    """Scan website: links, images, js, css, api"""
+    
+    clear()
+    show_banner()
+    
+    url = input(f"\n  {WHITE}URL target: {RESET}").strip()
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    
+    print(f"\n  {GREEN}⏳ Scanning...{RESET}")
+    
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
+        res = requests.get(url, headers=headers, timeout=15)
+        res.raise_for_status()
+        
+        soup = BeautifulSoup(res.text, 'html.parser')
+        base_url = res.url
+        
+        # ── Extract data ──
+        links = [urljoin(base_url, a.get('href')) for a in soup.find_all('a', href=True)]
+        images = [urljoin(base_url, img.get('src')) for img in soup.find_all('img', src=True)]
+        scripts = [urljoin(base_url, script.get('src')) for script in soup.find_all('script', src=True)]
+        css = [urljoin(base_url, link.get('href')) for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
+        
+        # ── API detection ──
+        api_patterns = [
+            r'fetch\s*\(\s*["\']([^"\']+)["\']',
+            r'axios\.[a-z]+\s*\(\s*["\']([^"\']+)["\']',
+            r'\.(?:get|post|put|delete|patch)\s*\(\s*["\']([^"\']+)["\']',
+            r'\/api\/[a-zA-Z0-9/_-]+',
+            r'graphql',
+            r'\/v[0-9]+\/',
+        ]
+        apis = set()
+        for pattern in api_patterns:
+            found = re.findall(pattern, res.text, re.IGNORECASE)
+            for f in found:
+                if f and not f.startswith(('data:', 'blob:', 'javascript:')):
+                    if f.startswith(('/', 'api', 'http', './')):
+                        apis.add(f)
+        
+        # ── Email detection ──
+        emails = set(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', res.text))
+        
+        # ── Social media ──
+        social_patterns = {
+            'instagram': r'(?:https?://)?(?:www\.)?instagram\.com/([a-zA-Z0-9_.]+)',
+            'tiktok': r'(?:https?://)?(?:www\.)?tiktok\.com/@([a-zA-Z0-9_.]+)',
+            'twitter': r'(?:https?://)?(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)',
+            'facebook': r'(?:https?://)?(?:www\.)?facebook\.com/([a-zA-Z0-9_.]+)',
+            'youtube': r'(?:https?://)?(?:www\.)?youtube\.com/(?:c|channel|user)/([a-zA-Z0-9_-]+)',
+            'github': r'(?:https?://)?(?:www\.)?github\.com/([a-zA-Z0-9_-]+)'
+        }
+        social = set()
+        for platform, pattern in social_patterns.items():
+            found = re.findall(pattern, res.text)
+            for f in found:
+                social.add(f"{platform}: {f}")
+        
+        # ── Show result ──
+        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {GREEN}📊 SCAN RESULT{RESET}")
+        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(f"  {WHITE}🔗 Links    : {GREEN}{len(links)}{RESET}")
+        print(f"  {WHITE}🖼️ Images   : {GREEN}{len(images)}{RESET}")
+        print(f"  {WHITE}📜 JS       : {GREEN}{len(scripts)}{RESET}")
+        print(f"  {WHITE}🎨 CSS      : {GREEN}{len(css)}{RESET}")
+        print(f"  {WHITE}🔗 API      : {GREEN}{len(apis)}{RESET}")
+        print(f"  {WHITE}📧 Emails   : {GREEN}{len(emails)}{RESET}")
+        print(f"  {WHITE}📱 Social   : {GREEN}{len(social)}{RESET}")
+        
+        # ── Show sample ──
+        if links:
+            print(f"\n  {CYAN}📌 Sample Links (first 5):{RESET}")
+            for i, l in enumerate(links[:5], 1):
+                print(f"    {WHITE}{i}. {l[:60]}{'...' if len(l) > 60 else ''}{RESET}")
+        
+        if apis:
+            print(f"\n  {CYAN}📌 API Endpoints:{RESET}")
+            for api in list(apis)[:10]:
+                print(f"    {WHITE}• {api}{RESET}")
+        
+        if emails:
+            print(f"\n  {CYAN}📌 Emails:{RESET}")
+            for email in emails:
+                print(f"    {WHITE}• {email}{RESET}")
+        
+        # ── Save to file ──
+        download_path = get_downloads_path()
+        output_dir = os.path.join(download_path, 'BONGKAR_WEB', 'scan_results')
+        os.makedirs(output_dir, exist_ok=True)
+        
+        filename = hashlib.md5(url.encode()).hexdigest()[:12]
+        filepath = os.path.join(output_dir, f'scan_{filename}.json')
+        
+        data = {
+            'url': url,
+            'links': links,
+            'images': images,
+            'scripts': scripts,
+            'css': css,
+            'apis': list(apis),
+            'emails': list(emails),
+            'social': list(social),
+            'total_links': len(links),
+            'total_images': len(images),
+            'total_scripts': len(scripts),
+            'total_css': len(css),
+            'total_apis': len(apis),
+            'total_emails': len(emails),
+            'total_social': len(social)
+        }
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        
+        print(f"\n  {GREEN}✅ Scan saved: {WHITE}{filepath}{RESET}")
+        
+    except Exception as e:
+        print(f"  {RED}❌ Error: {e}{RESET}")
+    
+    print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
+    input()
+
+def get_downloads_path():
+    paths = [
+        '/storage/emulated/0/Download',
+        '/sdcard/Download',
+        '/storage/emulated/0/Downloads',
+        os.path.expanduser('~/Downloads'),
+        os.path.expanduser('~/downloads')
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            return p
+    return os.getcwd()
+
+# ============================================================
+# DEEP CLONE ENGINE
 # ============================================================
 class DeepClone:
     def __init__(self, url, output_dir):
@@ -415,19 +453,6 @@ class DeepClone:
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"\n{GREEN}✅ Selesai! {WHITE}{self.output_dir}{RESET}")
 
-def get_downloads_path():
-    paths = [
-        '/storage/emulated/0/Download',
-        '/sdcard/Download',
-        '/storage/emulated/0/Downloads',
-        os.path.expanduser('~/Downloads'),
-        os.path.expanduser('~/downloads')
-    ]
-    for p in paths:
-        if os.path.exists(p):
-            return p
-    return os.getcwd()
-
 def get_next_clone_folder(base_path):
     i = 1
     while True:
@@ -585,7 +610,7 @@ def main():
         show_banner()
         
         print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {WHITE}📌 COPY TOOLS v5.2 - MPV DIRECT{RESET}")
+        print(f"  {WHITE}📌 COPY TOOLS v6.0 - FINAL{RESET}")
         print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
         
         print(f"\n{CYAN}  📌 PILIH:{RESET}")
@@ -593,7 +618,7 @@ def main():
         print(f"  {GREEN}2{WHITE}  Check HTTP Status{RESET}")
         print(f"  {GREEN}3{WHITE}  Get Page Metadata{RESET}")
         print(f"  {GREEN}4{WHITE}  Lihat Hasil Clone{RESET}")
-        print(f"  {GREEN}5{WHITE}  🎵 PUTAR LAGU (MPV DIRECT){RESET}")
+        print(f"  {GREEN}5{WHITE}  🔍 SCAN WEBSITE (Links, Images, API){RESET}")
         print(f"  {RED}6{WHITE}  Exit{RESET}")
         
         choice = input(f"\n  {YELLOW}➜ pilih (1-6): {RESET}").strip()
@@ -607,7 +632,7 @@ def main():
         elif choice == '4':
             list_files()
         elif choice == '5':
-            play_music()
+            scan_website()
         elif choice == '6':
             print(f"\n{GREEN}  copy. save. conquer.{RESET}")
             sys.exit(0)
