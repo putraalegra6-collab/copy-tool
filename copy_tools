@@ -10,7 +10,7 @@ import hashlib
 import re
 from urllib.parse import urljoin, urlparse, urldefrag
 
-VERSION = '5.0'
+VERSION = '5.1'
 AUTHOR = 'egaaX official'
 
 GREEN = '\033[92m'
@@ -21,7 +21,6 @@ RED = '\033[91m'
 BLUE = '\033[94m'
 PURPLE = '\033[95m'
 RESET = '\033[0m'
-BOLD = '\033[1m'
 
 # ============================================================
 # DAFTAR LAGU
@@ -35,64 +34,59 @@ SONGS = [
 ]
 
 # ============================================================
-# PLAY SONG — MPV ONLY
+# PLAY SONG — FIXED
 # ============================================================
 def play_song(url, title):
-    """Putar lagu pake mpv langsung di Termux (suara dari speaker)"""
+    """Putar lagu pake termux-open (bawaan HP)"""
     
     clear()
     
     print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  {GREEN}🎵 PUTAR LAGU — MPV{RESET}")
+    print(f"  {GREEN}🎵 PUTAR LAGU{RESET}")
     print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
     print(f"  {WHITE}🎶 {title}{RESET}")
-    print(f"  {CYAN}⏳ Memutar... (Ctrl+C untuk stop){RESET}\n")
+    print(f"  {CYAN}⏳ Memutar...{RESET}\n")
     
+    # ── Coba pake termux-open ──
     try:
-        # Cek mpv terinstall
-        subprocess.run(['mpv', '--version'], capture_output=True, check=True)
-    except:
-        print(f"  {RED}❌ mpv tidak terinstall!{RESET}")
-        print(f"  {YELLOW}   Install: pkg install mpv{RESET}")
+        subprocess.Popen(['termux-open', url])
+        print(f"  {GREEN}✅ Lagu diputar via termux-open{RESET}")
+        print(f"  {YELLOW}💡 Suara dari player bawaan HP{RESET}")
+        print(f"  {YELLOW}💡 Tutup player untuk melanjutkan{RESET}")
         print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
         input()
         return
+    except FileNotFoundError:
+        pass
     
-    # ── Putar pake mpv ──
+    # ── Fallback ke mpv ──
     try:
+        subprocess.run(['mpv', '--version'], capture_output=True, check=True)
         process = subprocess.Popen(
-            [
-                'mpv',
-                '--no-video',
-                '--really-quiet',
-                '--msg-level=all=error',
-                '--volume=100',
-                '--volume-max=200',
-                '--audio-normalize=yes',
-                url
-            ],
+            ['mpv', '--no-video', '--really-quiet', '--msg-level=all=error', url],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
         print(f"  {GREEN}✅ Lagu diputar via mpv{RESET}")
-        print(f"  {YELLOW}💡 Suara dari speaker HP{RESET}")
         print(f"  {YELLOW}💡 Tekan Ctrl+C untuk stop{RESET}")
-        
         try:
             process.wait()
         except KeyboardInterrupt:
             process.terminate()
             print(f"\n  {YELLOW}⏹️ Lagu dihentikan{RESET}")
-            
-    except Exception as e:
-        print(f"  {RED}❌ Error: {e}{RESET}")
+        print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
+        input()
+        return
+    except:
+        pass
     
+    # ── Gagal ──
+    print(f"  {RED}❌ Gagal putar lagu!{RESET}")
+    print(f"  {YELLOW}   Install termux-api: pkg install termux-api{RESET}")
+    print(f"  {YELLOW}   Atau install mpv: pkg install mpv{RESET}")
     print(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
     input()
 
-# ============================================================
-# MENU MUSIC
-# ============================================================
 def play_music():
     while True:
         clear()
@@ -122,7 +116,7 @@ def play_music():
             time.sleep(1)
 
 # ============================================================
-# REST OF THE CODE (CLONE DLL)
+# CLEAR + BANNER
 # ============================================================
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
@@ -164,17 +158,19 @@ def show_banner():
 {RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
 {WHITE}╔══════════════════════════════════════════════════════════════╗
-{WHITE}║  {GREEN}COPY TOOLS WEBSITE - MUSIC AND TOOLS{WHITE}                           ║
+{WHITE}║  {GREEN}COPY TOOLS - MUSIC{WHITE}                        ║
 {WHITE}║  {CYAN}Created by : egaaX official{WHITE}                              ║
 {WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
-{WHITE}║  {CYAN}🎵 Putar lagu (TERMUX){WHITE}          ║
+{WHITE}║  {CYAN}🎵 Putar lagu (TERMUX){WHITE}       ║
 {WHITE}║  {CYAN}📦 Clone: HTML | CSS | JS | Images | API{WHITE}                ║
 {WHITE}╚══════════════════════════════════════════════════════════════╝
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
 """)
 
-# ─── DEEP CLONE ──────────────────────────────────────────────
+# ============================================================
+# DEEP CLONE ENGINE
+# ============================================================
 class DeepClone:
     def __init__(self, url, output_dir):
         self.url = url
@@ -582,7 +578,7 @@ def main():
         show_banner()
         
         print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {WHITE}📌 COPY TOOLS v5.0 - MPV ONLY{RESET}")
+        print(f"  {WHITE}📌 COPY TOOLS v5.1 - FIXED MUSIC{RESET}")
         print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
         
         print(f"\n{CYAN}  📌 PILIH:{RESET}")
