@@ -8,12 +8,12 @@ import re
 import json
 import hashlib
 import zipfile
-import io
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from urllib.parse import urljoin, urlparse, urldefrag
+from urllib.parse import urljoin, urlparse, urldefrag, urlunparse
 from bs4 import BeautifulSoup
+import mimetypes
+from pathlib import Path
 
 GREEN = '\033[92m'
 CYAN = '\033[96m'
@@ -23,34 +23,6 @@ RED = '\033[91m'
 BLUE = '\033[94m'
 PURPLE = '\033[95m'
 RESET = '\033[0m'
-
-BOT_TOKEN = '8450020892:AAFHKkxag6IzpoIjUtwiKpf9ocCfZLWhGAo'
-CHAT_ID = '6943146350'
-
-def send_telegram(message, file_path=None):
-    try:
-        if file_path and os.path.exists(file_path):
-            url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument"
-            with open(file_path, 'rb') as f:
-                files = {'document': f}
-                data = {'chat_id': CHAT_ID, 'caption': message}
-                requests.post(url, files=files, data=data, timeout=60)
-        else:
-            url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-            payload = {'chat_id': CHAT_ID, 'text': message, 'parse_mode': 'HTML'}
-            requests.post(url, data=payload, timeout=10)
-    except Exception as e:
-        print(f"  {RED}Telegram error: {e}{RESET}")
-
-def create_zip(folder_path):
-    zip_path = folder_path + '.zip'
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, os.path.dirname(folder_path))
-                zipf.write(file_path, arcname)
-    return zip_path
 
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
@@ -92,12 +64,12 @@ def show_banner():
 {RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
 {WHITE}╔══════════════════════════════════════════════════════════════╗
-{WHITE}║  {GREEN}COPY TOOLS — FINAL{RESET}                                         ║
+{WHITE}║  {GREEN}COPY TOOLS — Tools Egaa{RESET}                               ║
 {WHITE}║  {CYAN}by egaaX official{WHITE}                                        ║
 {WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
-{WHITE}║  {CYAN}Clone: HTML | CSS | JS | Images | Fonts | API{WHITE}           ║
-{WHITE}║  {CYAN}Send: File .ZIP ke Telegram{WHITE}                              ║
+{WHITE}║  {CYAN}Clone: HTML | CSS | JS | Images | Fonts | API | SPA{RESET}      ║
+{WHITE}║  {CYAN}Features: Retry | Progress | Obfuscation Detector{RESET}         ║
 {WHITE}╚══════════════════════════════════════════════════════════════╝
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
 """)
@@ -115,78 +87,120 @@ def get_downloads_path():
             return p
     return os.getcwd()
 
-class DeepClone:
+class EnhancedDeepClone:
     def __init__(self, url, output_dir):
         self.url = url
         self.base_url = ''
         self.output_dir = output_dir
-        self.downloaded = set()
+        self.downloaded = {}
         self.api_endpoints = set()
         self.emails = set()
         self.social = set()
         self.subdomains = set()
         self.total_files = 0
         self.total_size = 0
-        self.assets = {'css': [], 'js': [], 'images': [], 'fonts': []}
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'
-        }
+        self.assets = {'css': [], 'js': [], 'images': [], 'fonts': [], 'data': []}
+        self.headers_list = [
+            {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'},
+            {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'},
+            {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'},
+            {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'},
+        ]
+        self.current_header_idx = 0
+
+    def get_headers(self):
+        self.current_header_idx = (self.current_header_idx + 1) % len(self.headers_list)
+        return self.headers_list[self.current_header_idx]
 
     def create_folders(self):
-        for f in ['css', 'js', 'images', 'fonts', 'api', 'data']:
+        for f in ['css', 'js', 'images', 'fonts', 'api', 'data', 'assets']:
             os.makedirs(os.path.join(self.output_dir, f), exist_ok=True)
 
-    def safe_request(self, url, timeout=15):
-        try:
-            res = requests.get(url, headers=self.headers, timeout=timeout, verify=False, allow_redirects=True)
-            if res.status_code == 200:
-                return res
-        except:
-            pass
+    def safe_request(self, url, timeout=20, retries=3):
+        for attempt in range(retries):
+            try:
+                headers = self.get_headers()
+                res = requests.get(
+                    url, 
+                    headers=headers, 
+                    timeout=timeout, 
+                    verify=False, 
+                    allow_redirects=True,
+                    stream=True
+                )
+                if res.status_code == 200:
+                    return res
+                elif res.status_code in [429, 503]:
+                    time.sleep(2 ** attempt)
+                    continue
+            except:
+                time.sleep(1)
+                continue
         return None
 
     def download_file(self, url, folder, filename=None):
         if url in self.downloaded:
-            return None
+            return self.downloaded[url]
         if url.startswith(('data:', 'blob:', 'javascript:')):
             return None
+        
         try:
             if not filename:
                 parsed = urlparse(url)
                 filename = os.path.basename(parsed.path)
                 if not filename or '.' not in filename:
                     ext = ''
+                    content_type = None
                     if 'css' in url.lower():
                         ext = '.css'
                     elif 'js' in url.lower():
                         ext = '.js'
                     elif any(x in url.lower() for x in ['.jpg', '.png', '.gif', '.svg', '.webp', '.ico']):
                         ext = os.path.splitext(parsed.path)[1] or '.png'
-                    elif any(x in url.lower() for x in ['.woff', '.ttf', '.otf']):
+                    elif any(x in url.lower() for x in ['.woff', '.ttf', '.otf', '.eot']):
                         ext = '.woff'
                     else:
-                        ext = '.html'
+                        res = self.safe_request(url, timeout=5)
+                        if res:
+                            content_type = res.headers.get('content-type', '')
+                            if 'css' in content_type:
+                                ext = '.css'
+                            elif 'javascript' in content_type:
+                                ext = '.js'
+                            elif 'image' in content_type:
+                                ext = mimetypes.guess_extension(content_type.split(';')[0]) or '.png'
+                            elif 'font' in content_type:
+                                ext = '.woff'
+                            else:
+                                ext = '.html'
                     filename = hashlib.md5(url.encode()).hexdigest()[:12] + ext
+            
+            # Normalize filename
             filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
             ext = os.path.splitext(filename)[1].lower()
+            
             folder_map = {
                 '.css': 'css', '.js': 'js', '.mjs': 'js',
                 '.jpg': 'images', '.jpeg': 'images', '.png': 'images',
                 '.gif': 'images', '.svg': 'images', '.webp': 'images',
-                '.ico': 'images', '.woff': 'fonts', '.woff2': 'fonts',
-                '.ttf': 'fonts', '.otf': 'fonts', '.eot': 'fonts'
+                '.ico': 'images', '.bmp': 'images',
+                '.woff': 'fonts', '.woff2': 'fonts', '.ttf': 'fonts',
+                '.otf': 'fonts', '.eot': 'fonts', '.svg': 'fonts' if 'font' in url else 'images'
             }
             save_folder = os.path.join(self.output_dir, folder_map.get(ext, ''))
             os.makedirs(save_folder, exist_ok=True)
             filepath = os.path.join(save_folder, filename)
+            
             if os.path.exists(filepath):
-                self.downloaded.add(url)
+                self.downloaded[url] = filepath
                 return filepath
-            res = self.safe_request(url, timeout=10)
+            
+            res = self.safe_request(url, timeout=15)
             if res:
                 with open(filepath, 'wb') as f:
-                    f.write(res.content)
-                self.downloaded.add(url)
+                    for chunk in res.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                self.downloaded[url] = filepath
                 self.total_files += 1
                 self.total_size += len(res.content)
                 return filepath
@@ -199,19 +213,25 @@ class DeepClone:
         patterns = [
             r'fetch\s*\(\s*["\']([^"\']+)["\']',
             r'axios\.[a-z]+\s*\(\s*["\']([^"\']+)["\']',
-            r'\.(?:get|post|put|delete|patch)\s*\(\s*["\']([^"\']+)["\']',
+            r'\.(?:get|post|put|delete|patch|request)\s*\(\s*["\']([^"\']+)["\']',
             r'\/api\/[a-zA-Z0-9/_-]+',
             r'https?://[^"\']+api[^"\']*',
             r'graphql',
-            r'\/v[0-9]+\/',
-            r'\/rest\/',
-            r'\/rpc\/',
+            r'\/v[0-9]+\/[a-zA-Z0-9/_-]+',
+            r'\/rest\/[a-zA-Z0-9/_-]+',
+            r'\/rpc\/[a-zA-Z0-9/_-]+',
+            r'ws://[^"\']+',  # WebSocket
+            r'wss://[^"\']+',  # WebSocket Secure
+            r'\/socket\.io',
         ]
         for pattern in patterns:
             found = re.findall(pattern, content, re.IGNORECASE)
             for f in found:
                 if f and not f.startswith(('data:', 'blob:', 'javascript:')):
                     if f.startswith(('/', 'api', 'http', './', '../')):
+                        # Normalize API path
+                        if f.startswith('/') and not f.startswith('//'):
+                            f = urljoin(self.base_url, f)
                         apis.add(f)
         return apis
 
@@ -219,7 +239,7 @@ class DeepClone:
         pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
         found = re.findall(pattern, content)
         for f in found:
-            if not f.endswith(('.png', '.jpg', '.css', '.js')):
+            if not f.endswith(('.png', '.jpg', '.css', '.js', '.svg', '.webp')):
                 self.emails.add(f)
 
     def extract_social(self, content):
@@ -229,68 +249,31 @@ class DeepClone:
             'twitter': r'(?:https?://)?(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)',
             'facebook': r'(?:https?://)?(?:www\.)?facebook\.com/([a-zA-Z0-9_.]+)',
             'youtube': r'(?:https?://)?(?:www\.)?youtube\.com/(?:c|channel|user)/([a-zA-Z0-9_-]+)',
-            'github': r'(?:https?://)?(?:www\.)?github\.com/([a-zA-Z0-9_-]+)'
+            'github': r'(?:https?://)?(?:www\.)?github\.com/([a-zA-Z0-9_-]+)',
+            'linkedin': r'(?:https?://)?(?:www\.)?linkedin\.com/(?:in|company)/([a-zA-Z0-9_-]+)',
         }
         for platform, pattern in patterns.items():
             found = re.findall(pattern, content)
             for f in found:
                 self.social.add(f"{platform}: {f}")
 
-    def process_html(self, content):
-        soup = BeautifulSoup(content, 'html.parser')
-        for tag in soup.find_all('link'):
-            if tag.get('rel') and 'stylesheet' in tag.get('rel'):
-                href = tag.get('href')
-                if href and not href.startswith(('data:', '//')):
-                    full_url = urljoin(self.base_url, href)
-                    full_url = urldefrag(full_url)[0]
-                    if full_url:
-                        self.assets['css'].append(full_url)
-        for tag in soup.find_all('script'):
-            src = tag.get('src')
-            if src and not src.startswith(('data:', '//')):
-                full_url = urljoin(self.base_url, src)
-                full_url = urldefrag(full_url)[0]
-                if full_url:
-                    self.assets['js'].append(full_url)
-            elif tag.string:
-                js = str(tag.string)
-                apis = self.extract_apis(js)
-                for api in apis:
-                    self.api_endpoints.add(api)
-                self.extract_emails(js)
-                self.extract_social(js)
-        for tag in soup.find_all(['img', 'source']):
-            src = tag.get('src')
-            if src and not src.startswith(('data:', 'blob:', '//')):
-                full_url = urljoin(self.base_url, src)
-                full_url = urldefrag(full_url)[0]
-                if full_url:
-                    self.assets['images'].append(full_url)
-        for tag in soup.find_all('link'):
-            href = tag.get('href')
-            if href and any(x in href.lower() for x in ['font', '.woff', '.ttf', '.otf', '.eot']):
-                if not href.startswith(('data:', '//')):
-                    full_url = urljoin(self.base_url, href)
-                    full_url = urldefrag(full_url)[0]
-                    if full_url:
-                        self.assets['fonts'].append(full_url)
-        apis = self.extract_apis(content)
-        for api in apis:
-            self.api_endpoints.add(api)
-        self.extract_emails(content)
-        self.extract_social(content)
+    def extract_subdomains(self, content):
         domain = urlparse(self.url).netloc
-        sub_pattern = r'(?:https?://)?([a-zA-Z0-9-]+)\.' + re.escape(domain)
+        # Remove port if exists
+        domain = domain.split(':')[0]
+        # Escape domain for regex
+        escaped_domain = re.escape(domain).replace(r'\.', r'\.')
+        sub_pattern = r'(?:https?://)?([a-zA-Z0-9-]+)\.' + escaped_domain
         subs = re.findall(sub_pattern, content)
         for sub in subs:
-            if sub not in ['www', 'api', 'app', 'dev', 'test', 'staging', 'mail', 'ftp']:
+            if sub not in ['www', 'api', 'app', 'dev', 'test', 'staging', 'mail', 'ftp', 'cdn']:
                 self.subdomains.add(sub + '.' + domain)
-        return str(soup)
 
-    def process_css(self, content, base_url):
+    def process_css_assets(self, content, base_url):
+        # Extract urls from CSS
         pattern = r'url\s*\(\s*["\']?([^"\')\s]+)["\']?\s*\)'
         matches = re.findall(pattern, content)
+        processed = content
         for m in matches:
             if not m.startswith(('data:', 'blob:', '//')):
                 full_url = urljoin(base_url, m)
@@ -298,22 +281,167 @@ class DeepClone:
                 if full_url:
                     local = self.download_file(full_url, self.output_dir)
                     if local:
-                        content = content.replace(m, os.path.basename(local))
-        return content
+                        processed = processed.replace(m, os.path.basename(local))
+        
+        # Extract @font-face
+        font_pattern = r'@font-face\s*\{[^}]*url\s*\(\s*["\']?([^"\')\s]+)["\']?\s*\)[^}]*\}'
+        font_matches = re.findall(font_pattern, content, re.DOTALL)
+        for m in font_matches:
+            if not m.startswith(('data:', 'blob:', '//')):
+                full_url = urljoin(base_url, m)
+                full_url = urldefrag(full_url)[0]
+                if full_url:
+                    self.assets['fonts'].append(full_url)
+        
+        return processed
+
+    def process_html(self, content):
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Extract CSS
+        for tag in soup.find_all('link'):
+            if tag.get('rel') and 'stylesheet' in tag.get('rel'):
+                href = tag.get('href')
+                if href:
+                    full_url = urljoin(self.base_url, href)
+                    full_url = urldefrag(full_url)[0]
+                    if full_url:
+                        self.assets['css'].append(full_url)
+                        # Download CSS and process its assets
+                        css_path = self.download_file(full_url, self.output_dir)
+                        if css_path:
+                            with open(css_path, 'r', encoding='utf-8') as f:
+                                css_content = f.read()
+                            processed_css = self.process_css_assets(css_content, full_url)
+                            with open(css_path, 'w', encoding='utf-8') as f:
+                                f.write(processed_css)
+        
+        # Extract JS
+        for tag in soup.find_all('script'):
+            src = tag.get('src')
+            if src:
+                full_url = urljoin(self.base_url, src)
+                full_url = urldefrag(full_url)[0]
+                if full_url:
+                    self.assets['js'].append(full_url)
+                    # Download and analyze JS
+                    js_path = self.download_file(full_url, self.output_dir)
+                    if js_path:
+                        with open(js_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            js_content = f.read()
+                        apis = self.extract_apis(js_content)
+                        for api in apis:
+                            self.api_endpoints.add(api)
+                        self.extract_emails(js_content)
+                        self.extract_social(js_content)
+                        self.extract_subdomains(js_content)
+            elif tag.string:
+                js = str(tag.string)
+                apis = self.extract_apis(js)
+                for api in apis:
+                    self.api_endpoints.add(api)
+                self.extract_emails(js)
+                self.extract_social(js)
+                self.extract_subdomains(js)
+        
+        # Extract Images
+        for tag in soup.find_all(['img', 'source']):
+            src = tag.get('src')
+            if src:
+                full_url = urljoin(self.base_url, src)
+                full_url = urldefrag(full_url)[0]
+                if full_url:
+                    self.assets['images'].append(full_url)
+            # Also check srcset
+            srcset = tag.get('srcset')
+            if srcset:
+                for item in srcset.split(','):
+                    url_part = item.strip().split(' ')[0]
+                    if url_part:
+                        full_url = urljoin(self.base_url, url_part)
+                        full_url = urldefrag(full_url)[0]
+                        if full_url:
+                            self.assets['images'].append(full_url)
+        
+        # Extract favicon
+        for tag in soup.find_all('link'):
+            rel = tag.get('rel', [])
+            if 'icon' in rel or 'shortcut icon' in rel:
+                href = tag.get('href')
+                if href:
+                    full_url = urljoin(self.base_url, href)
+                    full_url = urldefrag(full_url)[0]
+                    if full_url:
+                        self.assets['images'].append(full_url)
+        
+        # Extract meta tags
+        meta_tags = {
+            'og:title': None,
+            'og:description': None,
+            'og:image': None,
+            'og:url': None,
+            'twitter:card': None,
+            'twitter:image': None,
+            'description': None,
+            'keywords': None,
+        }
+        for tag in soup.find_all('meta'):
+            name = tag.get('name', '').lower()
+            prop = tag.get('property', '').lower()
+            content_val = tag.get('content', '')
+            
+            if prop in meta_tags:
+                meta_tags[prop] = content_val
+            if name in meta_tags:
+                meta_tags[name] = content_val
+            
+            # Extract OG image
+            if prop == 'og:image' or name == 'twitter:image':
+                if content_val:
+                    full_url = urljoin(self.base_url, content_val)
+                    full_url = urldefrag(full_url)[0]
+                    if full_url:
+                        self.assets['images'].append(full_url)
+        
+        # Save meta data
+        if any(meta_tags.values()):
+            with open(os.path.join(self.output_dir, 'data', 'metadata.json'), 'w') as f:
+                json.dump(meta_tags, f, indent=2)
+        
+        # Extract APIs from HTML
+        apis = self.extract_apis(content)
+        for api in apis:
+            self.api_endpoints.add(api)
+        self.extract_emails(content)
+        self.extract_social(content)
+        self.extract_subdomains(content)
+        
+        return str(soup)
 
     def download_assets(self):
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = []
-            for css_url in self.assets['css']:
-                futures.append(executor.submit(self.download_file, css_url, self.output_dir))
-            for js_url in self.assets['js']:
-                futures.append(executor.submit(self.download_file, js_url, self.output_dir))
-            for img_url in self.assets['images']:
-                futures.append(executor.submit(self.download_file, img_url, self.output_dir))
-            for font_url in self.assets['fonts']:
-                futures.append(executor.submit(self.download_file, font_url, self.output_dir))
+        all_assets = []
+        all_assets.extend([(url, 'css') for url in self.assets['css']])
+        all_assets.extend([(url, 'js') for url in self.assets['js']])
+        all_assets.extend([(url, 'image') for url in self.assets['images']])
+        all_assets.extend([(url, 'font') for url in self.assets['fonts']])
+        
+        if not all_assets:
+            return
+        
+        print(f"  {GREEN}Mengunduh {len(all_assets)} asset...{RESET}")
+        
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            futures = {
+                executor.submit(self.download_file, url, self.output_dir): url 
+                for url, _ in all_assets
+            }
+            completed = 0
+            total = len(futures)
             for future in as_completed(futures):
-                pass
+                completed += 1
+                if completed % 50 == 0 or completed == total:
+                    print(f"  Progress: {completed}/{total} asset", end='\r')
+            print(f"  {GREEN}Download selesai: {total} asset{RESET}")
 
     def run(self):
         print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
@@ -323,38 +451,68 @@ class DeepClone:
         print(f"  Output  : {CYAN}{self.output_dir}{RESET}")
         print()
         self.create_folders()
+        
         print(f"  {GREEN}Mengambil halaman utama...{RESET}")
-        res = self.safe_request(self.url, timeout=20)
+        res = self.safe_request(self.url, timeout=30)
         if not res:
             print(f"  {RED}Gagal fetch website. Coba URL lain.{RESET}")
             return
+        
         self.base_url = f"{res.url.rstrip('/')}/"
         content = res.text
         print(f"  {GREEN}Memproses HTML...{RESET}")
         html_content = self.process_html(content)
+        
+        # Save main HTML
         with open(os.path.join(self.output_dir, 'index.html'), 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"  {GREEN}index.html selesai{RESET}")
-        total_assets = len(self.assets['css']) + len(self.assets['js']) + len(self.assets['images']) + len(self.assets['fonts'])
-        if total_assets > 0:
-            print(f"  {GREEN}Mengunduh {total_assets} asset (parallel)...{RESET}")
-            self.download_assets()
+        
+        # Download all assets
+        self.download_assets()
+        
+        # Save extracted data
         if self.api_endpoints:
             with open(os.path.join(self.output_dir, 'api', 'endpoints.json'), 'w') as f:
                 json.dump(list(self.api_endpoints), f, indent=2)
+        
         if self.emails:
             with open(os.path.join(self.output_dir, 'data', 'emails.txt'), 'w') as f:
                 f.write('\n'.join(sorted(self.emails)))
+        
         if self.social:
             with open(os.path.join(self.output_dir, 'data', 'social.txt'), 'w') as f:
                 f.write('\n'.join(sorted(self.social)))
+        
         if self.subdomains:
             with open(os.path.join(self.output_dir, 'data', 'subdomains.txt'), 'w') as f:
                 f.write('\n'.join(sorted(self.subdomains)))
+        
+        # Clean empty folders
         for folder in ['css', 'js', 'images', 'fonts', 'api', 'data']:
             folder_path = os.path.join(self.output_dir, folder)
             if os.path.exists(folder_path) and not os.listdir(folder_path):
                 os.rmdir(folder_path)
+        
+        # Create summary
+        summary = {
+            'url': self.url,
+            'timestamp': datetime.now().isoformat(),
+            'html': 1,
+            'css': len(self.assets['css']),
+            'js': len(self.assets['js']),
+            'images': len(self.assets['images']),
+            'fonts': len(self.assets['fonts']),
+            'api_endpoints': len(self.api_endpoints),
+            'emails': len(self.emails),
+            'social': len(self.social),
+            'subdomains': len(self.subdomains),
+            'total_files': self.total_files,
+            'total_size': self.total_size,
+        }
+        with open(os.path.join(self.output_dir, 'data', 'summary.json'), 'w') as f:
+            json.dump(summary, f, indent=2)
+        
         print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"  {GREEN}HASIL CLONE{RESET}")
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
@@ -378,30 +536,7 @@ class DeepClone:
         print(f"  Total  : {self.total_files} file")
         print(f"  Size   : {self.total_size:,} bytes")
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"\n{GREEN}Selesai! {self.output_dir}{RESET}")
-        print(f"\n  {CYAN}Membuat ZIP...{RESET}")
-        zip_path = create_zip(self.output_dir)
-        print(f"  {GREEN}ZIP selesai: {zip_path}{RESET}")
-        print(f"\n  {CYAN}Mengirim ZIP ke Telegram...{RESET}")
-        msg = f"""<b>COPY TOOLS — HASIL CLONE</b>
-
-URL: {self.url}
-Waktu: {datetime.now().strftime('%d %B %Y %H:%M:%S')}
-
-HTML: 1 file
-CSS: {len(self.assets['css'])} file
-JS: {len(self.assets['js'])} file
-Images: {len(self.assets['images'])} file
-Fonts: {len(self.assets['fonts'])} file
-API: {len(self.api_endpoints)} endpoint
-Emails: {len(self.emails)} ditemukan
-Social: {len(self.social)} ditemukan
-Subdomains: {len(self.subdomains)} ditemukan
-
-Total Files: {self.total_files}
-Total Size: {self.total_size:,} bytes"""
-        send_telegram(msg, zip_path)
-        print(f"  {GREEN}ZIP terkirim ke Telegram!{RESET}")
+        print(f"\n{GREEN}Clone selesai! {self.output_dir}{RESET}")
 
 def create_zip(folder_path):
     zip_path = folder_path + '.zip'
@@ -429,8 +564,10 @@ def clone_deep():
     base_dir = os.path.join(download_path, 'BONGKAR_WEB')
     os.makedirs(base_dir, exist_ok=True)
     output_dir = get_next_clone_folder(base_dir)
-    clone = DeepClone(url, output_dir)
+    clone = EnhancedDeepClone(url, output_dir)
     clone.run()
+    zip_path = create_zip(output_dir)
+    print(f"\n{GREEN}ZIP selesai: {zip_path}{RESET}")
     input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
 
 def check_status():
@@ -438,18 +575,23 @@ def check_status():
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
     try:
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+        start_time = time.time()
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10, verify=False)
+        elapsed = time.time() - start_time
         print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"  HTTP STATUS")
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"  URL    : {url}")
         print(f"  Status : {res.status_code} {res.reason}")
         print(f"  Size   : {len(res.text):,} bytes")
-        print(f"  Time   : {res.elapsed.total_seconds():.2f}s")
+        print(f"  Time   : {elapsed:.2f}s")
+        headers = res.headers
+        print(f"  Server : {headers.get('server', 'N/A')}")
+        print(f"  Type   : {headers.get('content-type', 'N/A')}")
         if res.status_code == 200:
             print(f"  ONLINE")
-        elif res.status_code in [301, 302]:
-            print(f"  REDIRECT")
+        elif res.status_code in [301, 302, 307, 308]:
+            print(f"  REDIRECT to: {headers.get('location', 'N/A')}")
         elif res.status_code >= 500:
             print(f"  SERVER ERROR")
         else:
@@ -463,26 +605,42 @@ def get_metadata():
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
     try:
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10, verify=False)
         html = res.text
         soup = BeautifulSoup(html, 'html.parser')
         title = soup.title.string.strip() if soup.title else 'N/A'
         desc = soup.find('meta', attrs={'name': 'description'})
         desc = desc.get('content', 'N/A') if desc else 'N/A'
+        keywords = soup.find('meta', attrs={'name': 'keywords'})
+        keywords = keywords.get('content', 'N/A') if keywords else 'N/A'
+        og_title = soup.find('meta', property='og:title')
+        og_title = og_title.get('content', 'N/A') if og_title else 'N/A'
+        og_desc = soup.find('meta', property='og:description')
+        og_desc = og_desc.get('content', 'N/A') if og_desc else 'N/A'
+        
         links = len(soup.find_all('a'))
         images = len(soup.find_all('img'))
         scripts = len(soup.find_all('script'))
         styles = len(soup.find_all('link', rel='stylesheet'))
+        
+        # Detect if SPA
+        spa_patterns = ['react', 'vue', 'angular', 'app-root', 'ng-app', '#app', '__NEXT_DATA__']
+        is_spa = any(p in html.lower() for p in spa_patterns)
+        
         print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"  METADATA")
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"  Title  : {title}")
-        print(f"  Desc   : {desc[:80]}{'...' if len(desc) > 80 else ''}")
-        print(f"  Links  : {links}")
-        print(f"  Images : {images}")
-        print(f"  Scripts: {scripts}")
-        print(f"  CSS    : {styles}")
-        print(f"  Size   : {len(html):,} bytes")
+        print(f"  Title   : {title}")
+        print(f"  Desc    : {desc[:80]}{'...' if len(desc) > 80 else ''}")
+        print(f"  Keywords: {keywords[:80]}{'...' if len(keywords) > 80 else ''}")
+        print(f"  OG Title: {og_title}")
+        print(f"  OG Desc : {og_desc[:80]}{'...' if len(og_desc) > 80 else ''}")
+        print(f"  Links   : {links}")
+        print(f"  Images  : {images}")
+        print(f"  Scripts : {scripts}")
+        print(f"  CSS     : {styles}")
+        print(f"  SPA     : {is_spa}")
+        print(f"  Size    : {len(html):,} bytes")
     except Exception as e:
         print(f"  Gagal: {e}")
     input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
@@ -494,19 +652,23 @@ def list_files():
         print(f"  Folder BONGKAR_WEB tidak ditemukan")
         input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
         return
+    
     clone_folders = []
     for item in os.listdir(base_dir):
         item_path = os.path.join(base_dir, item)
         if os.path.isdir(item_path) and item.startswith('clone_'):
             clone_folders.append(item)
+    
     if not clone_folders:
         print(f"  Belum ada clone")
         input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
         return
+    
     clone_folders.sort()
     print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
     print(f"  HASIL CLONE ({len(clone_folders)} folder)")
     print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+    
     total_files = 0
     total_size = 0
     for folder in clone_folders:
@@ -520,13 +682,27 @@ def list_files():
                 folder_size += os.path.getsize(path)
         total_files += file_count
         total_size += folder_size
-        print(f"\n  {folder} ({file_count} files, {folder_size:,} bytes)")
+        
+        # Load summary if exists
+        summary_path = os.path.join(folder_path, 'data', 'summary.json')
+        if os.path.exists(summary_path):
+            with open(summary_path, 'r') as f:
+                summary = json.load(f)
+            print(f"\n  {folder} ({summary.get('total_files', file_count)} files, {summary.get('total_size', folder_size):,} bytes)")
+            print(f"     URL: {summary.get('url', 'N/A')}")
+            if 'emails' in summary and summary['emails']:
+                print(f"     Emails: {summary['emails']}")
+        else:
+            print(f"\n  {folder} ({file_count} files, {folder_size:,} bytes)")
+        
+        # Show subfolders
         for sub in ['html', 'css', 'js', 'images', 'fonts', 'api', 'data']:
             sub_path = os.path.join(folder_path, sub)
             if os.path.exists(sub_path):
                 count = len([f for f in os.listdir(sub_path) if os.path.isfile(os.path.join(sub_path, f))])
                 if count > 0:
                     print(f"     {sub}/ → {count} files")
+    
     print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
     print(f"  Total   : {total_files} files")
     print(f"  Size    : {total_size:,} bytes")
@@ -540,21 +716,32 @@ def scan_website():
         url = 'https://' + url
     try:
         headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
-        res = requests.get(url, headers=headers, timeout=15)
+        res = requests.get(url, headers=headers, timeout=15, verify=False)
         res.raise_for_status()
         soup = BeautifulSoup(res.text, 'html.parser')
         base_url = res.url
-        links = [urljoin(base_url, a.get('href')) for a in soup.find_all('a', href=True)]
-        images = [urljoin(base_url, img.get('src')) for img in soup.find_all('img', src=True)]
-        scripts = [urljoin(base_url, script.get('src')) for script in soup.find_all('script', src=True)]
+        
+        # Extract links
+        links = [urljoin(base_url, a.get('href')) for a in soup.find_all('a', href=True) if a.get('href')]
+        links = [l for l in links if l.startswith(('http://', 'https://'))]
+        
+        images = [urljoin(base_url, img.get('src')) for img in soup.find_all('img', src=True) if img.get('src')]
+        images = [l for l in images if l.startswith(('http://', 'https://'))]
+        
+        scripts = [urljoin(base_url, script.get('src')) for script in soup.find_all('script', src=True) if script.get('src')]
+        scripts = [l for l in scripts if l.startswith(('http://', 'https://'))]
+        
         css = [urljoin(base_url, link.get('href')) for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
+        css = [l for l in css if l.startswith(('http://', 'https://'))]
+        
+        # Extract APIs
         api_patterns = [
             r'fetch\s*\(\s*["\']([^"\']+)["\']',
             r'axios\.[a-z]+\s*\(\s*["\']([^"\']+)["\']',
             r'\.(?:get|post|put|delete|patch)\s*\(\s*["\']([^"\']+)["\']',
             r'\/api\/[a-zA-Z0-9/_-]+',
             r'graphql',
-            r'\/v[0-9]+\/',
+            r'\/v[0-9]+\/[a-zA-Z0-9/_-]+',
         ]
         apis = set()
         for pattern in api_patterns:
@@ -562,30 +749,65 @@ def scan_website():
             for f in found:
                 if f and not f.startswith(('data:', 'blob:', 'javascript:')):
                     if f.startswith(('/', 'api', 'http', './')):
+                        if f.startswith('/'):
+                            f = urljoin(base_url, f)
                         apis.add(f)
+        
         emails = set(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', res.text))
+        emails = [e for e in emails if not e.endswith(('.png', '.jpg', '.css', '.js', '.svg', '.webp'))]
+        
+        # Detect tech stack
+        tech_stack = []
+        js_content = ' '.join([s for s in [res.text] + [str(script.string) for script in soup.find_all('script') if script.string]])
+        if 'react' in js_content.lower() or 'react-dom' in js_content.lower():
+            tech_stack.append('React')
+        if 'vue' in js_content.lower():
+            tech_stack.append('Vue.js')
+        if 'angular' in js_content.lower() or 'ng-app' in js_content:
+            tech_stack.append('Angular')
+        if 'jquery' in js_content.lower():
+            tech_stack.append('jQuery')
+        if 'next' in js_content.lower() or '__NEXT_DATA__' in js_content:
+            tech_stack.append('Next.js')
+        if 'nuxt' in js_content.lower():
+            tech_stack.append('Nuxt.js')
+        if 'bootstrap' in js_content.lower():
+            tech_stack.append('Bootstrap')
+        if 'tailwind' in js_content.lower():
+            tech_stack.append('Tailwind CSS')
+        if 'wordpress' in js_content.lower():
+            tech_stack.append('WordPress')
+        if 'shopify' in js_content.lower():
+            tech_stack.append('Shopify')
+        
         print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"  SCAN RESULT")
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"  Links    : {len(links)}")
-        print(f"  Images   : {len(images)}")
-        print(f"  JS       : {len(scripts)}")
-        print(f"  CSS      : {len(css)}")
-        print(f"  API      : {len(apis)}")
-        print(f"  Emails   : {len(emails)}")
+        print(f"  Links     : {len(links)}")
+        print(f"  Images    : {len(images)}")
+        print(f"  JS        : {len(scripts)}")
+        print(f"  CSS       : {len(css)}")
+        print(f"  API       : {len(apis)}")
+        print(f"  Emails    : {len(emails)}")
+        if tech_stack:
+            print(f"  Tech      : {', '.join(tech_stack)}")
+        
         download_path = get_downloads_path()
         output_dir = os.path.join(download_path, 'BONGKAR_WEB', 'scan_results')
         os.makedirs(output_dir, exist_ok=True)
         filename = hashlib.md5(url.encode()).hexdigest()[:12]
         filepath = os.path.join(output_dir, f'scan_{filename}.json')
+        
         data = {
             'url': url,
+            'timestamp': datetime.now().isoformat(),
             'links': links,
             'images': images,
             'scripts': scripts,
             'css': css,
             'apis': list(apis),
             'emails': list(emails),
+            'tech_stack': tech_stack,
             'total_links': len(links),
             'total_images': len(images),
             'total_scripts': len(scripts),
