@@ -7,13 +7,12 @@ import requests
 import re
 import json
 import hashlib
-import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from urllib.parse import urljoin, urlparse, urldefrag, urlunparse
+from urllib.parse import urljoin, urlparse, urldefrag
 from bs4 import BeautifulSoup
 import mimetypes
-from pathlib import Path
+import threading
 
 GREEN = '\033[92m'
 CYAN = '\033[96m'
@@ -23,6 +22,44 @@ RED = '\033[91m'
 BLUE = '\033[94m'
 PURPLE = '\033[95m'
 RESET = '\033[0m'
+
+# Animasi loading
+spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+progress_chars = ['░', '▒', '▓', '█']
+anim_running = False
+
+def animate_loading(stop_event, message="Processing"):
+    global anim_running
+    i = 0
+    while not stop_event.is_set():
+        sys.stdout.write(f'\r  {CYAN}{spinner[i % len(spinner)]}{RESET} {message}...')
+        sys.stdout.flush()
+        i += 1
+        time.sleep(0.1)
+    sys.stdout.write(f'\r  {GREEN}✓{RESET} {message} selesai     \n')
+    sys.stdout.flush()
+
+def loading_with_animation(func, message):
+    stop_event = threading.Event()
+    t = threading.Thread(target=animate_loading, args=(stop_event, message))
+    t.daemon = True
+    t.start()
+    result = func()
+    stop_event.set()
+    t.join(timeout=0.5)
+    return result
+
+def show_progress_bar(current, total, prefix=''):
+    if total == 0:
+        return
+    bar_length = 30
+    percent = current / total
+    filled = int(bar_length * percent)
+    bar = '█' * filled + '░' * (bar_length - filled)
+    sys.stdout.write(f'\r  {CYAN}{prefix}{RESET} [{bar}] {current}/{total} ({percent*100:.1f}%)')
+    sys.stdout.flush()
+    if current == total:
+        sys.stdout.write('\n')
 
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
@@ -66,10 +103,10 @@ def show_banner():
 {WHITE}╔══════════════════════════════════════════════════════════════╗
 {WHITE}║  {GREEN}COPY TOOLS — FINAL ULTIMATE{RESET}                               ║
 {WHITE}║  {CYAN}by egaaX official{WHITE}                                        ║
-{WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
+{WHITE}║  {YELLOW}"copy. save. conquer."{RESET}                                 ║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
 {WHITE}║  {CYAN}Clone: HTML | CSS | JS | Images | Fonts | API | SPA{RESET}      ║
-{WHITE}║  {CYAN}Features: Retry | Progress | Obfuscation Detector{RESET}         ║
+{WHITE}║  {CYAN}Features: Animasi | Progress | Auto-Detect{RESET}                ║
 {WHITE}╚══════════════════════════════════════════════════════════════╝
 {WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
 """)
@@ -99,7 +136,7 @@ class EnhancedDeepClone:
         self.subdomains = set()
         self.total_files = 0
         self.total_size = 0
-        self.assets = {'css': [], 'js': [], 'images': [], 'fonts': [], 'data': []}
+        self.assets = {'css': [], 'js': [], 'images': [], 'fonts': []}
         self.headers_list = [
             {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'},
             {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'},
@@ -138,42 +175,40 @@ class EnhancedDeepClone:
                 continue
         return None
 
-    def download_file(self, url, folder, filename=None):
+    def download_file(self, url, folder):
         if url in self.downloaded:
             return self.downloaded[url]
         if url.startswith(('data:', 'blob:', 'javascript:')):
             return None
         
         try:
-            if not filename:
-                parsed = urlparse(url)
-                filename = os.path.basename(parsed.path)
-                if not filename or '.' not in filename:
-                    ext = ''
-                    content_type = None
-                    if 'css' in url.lower():
-                        ext = '.css'
-                    elif 'js' in url.lower():
-                        ext = '.js'
-                    elif any(x in url.lower() for x in ['.jpg', '.png', '.gif', '.svg', '.webp', '.ico']):
-                        ext = os.path.splitext(parsed.path)[1] or '.png'
-                    elif any(x in url.lower() for x in ['.woff', '.ttf', '.otf', '.eot']):
-                        ext = '.woff'
-                    else:
-                        res = self.safe_request(url, timeout=5)
-                        if res:
-                            content_type = res.headers.get('content-type', '')
-                            if 'css' in content_type:
-                                ext = '.css'
-                            elif 'javascript' in content_type:
-                                ext = '.js'
-                            elif 'image' in content_type:
-                                ext = mimetypes.guess_extension(content_type.split(';')[0]) or '.png'
-                            elif 'font' in content_type:
-                                ext = '.woff'
-                            else:
-                                ext = '.html'
-                    filename = hashlib.md5(url.encode()).hexdigest()[:12] + ext
+            parsed = urlparse(url)
+            filename = os.path.basename(parsed.path)
+            if not filename or '.' not in filename:
+                ext = ''
+                if 'css' in url.lower():
+                    ext = '.css'
+                elif 'js' in url.lower():
+                    ext = '.js'
+                elif any(x in url.lower() for x in ['.jpg', '.png', '.gif', '.svg', '.webp', '.ico']):
+                    ext = os.path.splitext(parsed.path)[1] or '.png'
+                elif any(x in url.lower() for x in ['.woff', '.ttf', '.otf', '.eot']):
+                    ext = '.woff'
+                else:
+                    res = self.safe_request(url, timeout=5)
+                    if res:
+                        content_type = res.headers.get('content-type', '')
+                        if 'css' in content_type:
+                            ext = '.css'
+                        elif 'javascript' in content_type:
+                            ext = '.js'
+                        elif 'image' in content_type:
+                            ext = mimetypes.guess_extension(content_type.split(';')[0]) or '.png'
+                        elif 'font' in content_type:
+                            ext = '.woff'
+                        else:
+                            ext = '.html'
+                filename = hashlib.md5(url.encode()).hexdigest()[:12] + ext
             
             filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
             ext = os.path.splitext(filename)[1].lower()
@@ -292,6 +327,8 @@ class EnhancedDeepClone:
     def process_html(self, content):
         soup = BeautifulSoup(content, 'html.parser')
         
+        # CSS
+        css_count = 0
         for tag in soup.find_all('link'):
             if tag.get('rel') and 'stylesheet' in tag.get('rel'):
                 href = tag.get('href')
@@ -300,6 +337,7 @@ class EnhancedDeepClone:
                     full_url = urldefrag(full_url)[0]
                     if full_url:
                         self.assets['css'].append(full_url)
+                        css_count += 1
                         css_path = self.download_file(full_url, self.output_dir)
                         if css_path:
                             try:
@@ -311,6 +349,8 @@ class EnhancedDeepClone:
                             except:
                                 pass
         
+        # JS
+        js_count = 0
         for tag in soup.find_all('script'):
             src = tag.get('src')
             if src:
@@ -318,6 +358,7 @@ class EnhancedDeepClone:
                 full_url = urldefrag(full_url)[0]
                 if full_url:
                     self.assets['js'].append(full_url)
+                    js_count += 1
                     js_path = self.download_file(full_url, self.output_dir)
                     if js_path:
                         try:
@@ -340,6 +381,8 @@ class EnhancedDeepClone:
                 self.extract_social(js)
                 self.extract_subdomains(js)
         
+        # Images
+        img_count = 0
         for tag in soup.find_all(['img', 'source']):
             src = tag.get('src')
             if src:
@@ -347,6 +390,7 @@ class EnhancedDeepClone:
                 full_url = urldefrag(full_url)[0]
                 if full_url:
                     self.assets['images'].append(full_url)
+                    img_count += 1
             srcset = tag.get('srcset')
             if srcset:
                 for item in srcset.split(','):
@@ -356,7 +400,9 @@ class EnhancedDeepClone:
                         full_url = urldefrag(full_url)[0]
                         if full_url:
                             self.assets['images'].append(full_url)
+                            img_count += 1
         
+        # Favicon
         for tag in soup.find_all('link'):
             rel = tag.get('rel', [])
             if 'icon' in rel or 'shortcut icon' in rel:
@@ -366,39 +412,32 @@ class EnhancedDeepClone:
                     full_url = urldefrag(full_url)[0]
                     if full_url:
                         self.assets['images'].append(full_url)
+                        img_count += 1
         
-        meta_tags = {
-            'og:title': None,
-            'og:description': None,
-            'og:image': None,
-            'og:url': None,
-            'twitter:card': None,
-            'twitter:image': None,
-            'description': None,
-            'keywords': None,
-        }
+        # Meta tags
+        meta_tags = {}
         for tag in soup.find_all('meta'):
             name = tag.get('name', '').lower()
             prop = tag.get('property', '').lower()
             content_val = tag.get('content', '')
-            
-            if prop in meta_tags:
+            if prop:
                 meta_tags[prop] = content_val
-            if name in meta_tags:
+            if name:
                 meta_tags[name] = content_val
-            
             if prop == 'og:image' or name == 'twitter:image':
                 if content_val:
                     full_url = urljoin(self.base_url, content_val)
                     full_url = urldefrag(full_url)[0]
                     if full_url:
                         self.assets['images'].append(full_url)
+                        img_count += 1
         
-        if any(meta_tags.values()):
+        if meta_tags:
             os.makedirs(os.path.join(self.output_dir, 'data'), exist_ok=True)
             with open(os.path.join(self.output_dir, 'data', 'metadata.json'), 'w') as f:
                 json.dump(meta_tags, f, indent=2)
         
+        # Extract APIs from HTML
         apis = self.extract_apis(content)
         for api in apis:
             self.api_endpoints.add(api)
@@ -406,9 +445,10 @@ class EnhancedDeepClone:
         self.extract_social(content)
         self.extract_subdomains(content)
         
+        print(f"  {GREEN}CSS:{RESET} {css_count} file | {GREEN}JS:{RESET} {js_count} file | {GREEN}Images:{RESET} {img_count} file")
         return str(soup)
 
-    def download_assets(self):
+    def download_assets_with_progress(self):
         all_assets = []
         all_assets.extend([(url, 'css') for url in self.assets['css']])
         all_assets.extend([(url, 'js') for url in self.assets['js']])
@@ -418,20 +458,20 @@ class EnhancedDeepClone:
         if not all_assets:
             return
         
-        print(f"  {GREEN}Mengunduh {len(all_assets)} asset...{RESET}")
+        total = len(all_assets)
+        print(f"\n  {CYAN}Mengunduh {total} asset...{RESET}")
         
+        completed = 0
         with ThreadPoolExecutor(max_workers=20) as executor:
             futures = {
                 executor.submit(self.download_file, url, self.output_dir): url 
                 for url, _ in all_assets
             }
-            completed = 0
-            total = len(futures)
             for future in as_completed(futures):
                 completed += 1
-                if completed % 50 == 0 or completed == total:
-                    print(f"  Progress: {completed}/{total} asset", end='\r')
-            print(f"  {GREEN}Download selesai: {total} asset{RESET}")
+                show_progress_bar(completed, total, 'Downloading')
+        
+        print()
 
     def run(self):
         print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
@@ -442,23 +482,32 @@ class EnhancedDeepClone:
         print()
         self.create_folders()
         
-        print(f"  {GREEN}Mengambil halaman utama...{RESET}")
-        res = self.safe_request(self.url, timeout=30)
+        # Fetch HTML with animation
+        def fetch():
+            return self.safe_request(self.url, timeout=30)
+        
+        print(f"  {CYAN}▸{RESET} Mengambil halaman utama...")
+        res = loading_with_animation(fetch, "Fetching page")
         if not res:
-            print(f"  {RED}Gagal fetch website. Coba URL lain.{RESET}")
+            print(f"  {RED}✗ Gagal fetch website{RESET}")
             return
         
         self.base_url = f"{res.url.rstrip('/')}/"
         content = res.text
-        print(f"  {GREEN}Memproses HTML...{RESET}")
-        html_content = self.process_html(content)
+        
+        print(f"  {CYAN}▸{RESET} Memproses HTML...")
+        def process():
+            return self.process_html(content)
+        html_content = loading_with_animation(process, "Processing HTML")
         
         with open(os.path.join(self.output_dir, 'index.html'), 'w', encoding='utf-8') as f:
             f.write(html_content)
-        print(f"  {GREEN}index.html selesai{RESET}")
+        print(f"  {GREEN}✓ index.html selesai{RESET}")
         
-        self.download_assets()
+        # Download assets with progress bar
+        self.download_assets_with_progress()
         
+        # Save extracted data
         if self.api_endpoints:
             os.makedirs(os.path.join(self.output_dir, 'api'), exist_ok=True)
             with open(os.path.join(self.output_dir, 'api', 'endpoints.json'), 'w') as f:
@@ -479,14 +528,7 @@ class EnhancedDeepClone:
             with open(os.path.join(self.output_dir, 'data', 'subdomains.txt'), 'w') as f:
                 f.write('\n'.join(sorted(self.subdomains)))
         
-        for folder in ['css', 'js', 'images', 'fonts', 'api', 'data']:
-            folder_path = os.path.join(self.output_dir, folder)
-            if os.path.exists(folder_path) and not os.listdir(folder_path):
-                try:
-                    os.rmdir(folder_path)
-                except:
-                    pass
-        
+        # Summary
         summary = {
             'url': self.url,
             'timestamp': datetime.now().isoformat(),
@@ -506,40 +548,32 @@ class EnhancedDeepClone:
         with open(os.path.join(self.output_dir, 'data', 'summary.json'), 'w') as f:
             json.dump(summary, f, indent=2)
         
+        # Results
         print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
         print(f"  {GREEN}HASIL CLONE{RESET}")
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"  HTML   : 1 file")
+        print(f"  {WHITE}HTML    : 1 file{RESET}")
         if self.assets['css']:
-            print(f"  CSS    : {len(self.assets['css'])} file")
+            print(f"  {WHITE}CSS     : {len(self.assets['css'])} file{RESET}")
         if self.assets['js']:
-            print(f"  JS     : {len(self.assets['js'])} file")
+            print(f"  {WHITE}JS      : {len(self.assets['js'])} file{RESET}")
         if self.assets['images']:
-            print(f"  Images : {len(self.assets['images'])} file")
+            print(f"  {WHITE}Images  : {len(self.assets['images'])} file{RESET}")
         if self.assets['fonts']:
-            print(f"  Fonts  : {len(self.assets['fonts'])} file")
+            print(f"  {WHITE}Fonts   : {len(self.assets['fonts'])} file{RESET}")
         if self.api_endpoints:
-            print(f"  API    : {len(self.api_endpoints)} endpoint")
+            print(f"  {WHITE}API     : {len(self.api_endpoints)} endpoint{RESET}")
         if self.emails:
-            print(f"  Emails : {len(self.emails)} ditemukan")
+            print(f"  {WHITE}Emails  : {len(self.emails)} ditemukan{RESET}")
         if self.social:
-            print(f"  Social : {len(self.social)} ditemukan")
+            print(f"  {WHITE}Social  : {len(self.social)} ditemukan{RESET}")
         if self.subdomains:
-            print(f"  Subdom : {len(self.subdomains)} ditemukan")
-        print(f"  Total  : {self.total_files} file")
-        print(f"  Size   : {self.total_size:,} bytes")
+            print(f"  {WHITE}Subdom  : {len(self.subdomains)} ditemukan{RESET}")
+        print(f"  {WHITE}Total   : {self.total_files} file{RESET}")
+        print(f"  {WHITE}Size    : {self.total_size:,} bytes{RESET}")
         print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"\n{GREEN}Clone selesai! {self.output_dir}{RESET}")
-
-def create_zip(folder_path):
-    zip_path = folder_path + '.zip'
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, os.path.dirname(folder_path))
-                zipf.write(file_path, arcname)
-    return zip_path
+        print(f"\n{GREEN}✓ Clone selesai!{RESET}")
+        print(f"  {WHITE}Folder: {self.output_dir}{RESET}")
 
 def get_next_clone_folder(base_path):
     i = 1
@@ -559,8 +593,6 @@ def clone_deep():
     output_dir = get_next_clone_folder(base_dir)
     clone = EnhancedDeepClone(url, output_dir)
     clone.run()
-    zip_path = create_zip(output_dir)
-    print(f"\n{GREEN}ZIP selesai: {zip_path}{RESET}")
     input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
 
 def check_status():
@@ -686,7 +718,7 @@ def list_files():
         else:
             print(f"\n  {folder} ({file_count} files, {folder_size:,} bytes)")
         
-        for sub in ['html', 'css', 'js', 'images', 'fonts', 'api', 'data']:
+        for sub in ['css', 'js', 'images', 'fonts', 'api', 'data']:
             sub_path = os.path.join(folder_path, sub)
             if os.path.exists(sub_path):
                 count = len([f for f in os.listdir(sub_path) if os.path.isfile(os.path.join(sub_path, f))])
