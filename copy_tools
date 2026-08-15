@@ -3,838 +3,830 @@
 import os
 import sys
 import time
-import requests
 import re
 import json
 import hashlib
 import zipfile
+import warnings
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from urllib.parse import urljoin, urlparse, urldefrag, urlunparse
-from bs4 import BeautifulSoup
-import mimetypes
-from pathlib import Path
+from urllib.parse import urljoin, urlparse, urldefrag
 
-GREEN = '\033[92m'
-CYAN = '\033[96m'
+# suppress SSL warnings
+warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+
+try:
+    import requests
+    from bs4 import BeautifulSoup
+except ImportError:
+    print("Install dulu: pip install requests beautifulsoup4")
+    sys.exit(1)
+
+# ─── ANSI COLORS ───────────────────────────────────────────────────────────────
+GREEN  = '\033[92m'
+CYAN   = '\033[96m'
 YELLOW = '\033[93m'
-WHITE = '\033[97m'
-RED = '\033[91m'
-BLUE = '\033[94m'
-PURPLE = '\033[95m'
-RESET = '\033[0m'
+WHITE  = '\033[97m'
+RED    = '\033[91m'
+BLUE   = '\033[94m'
+RESET  = '\033[0m'
+DIM    = '\033[2m'
 
+# ─── HELPERS ───────────────────────────────────────────────────────────────────
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
 
 def get_datetime():
     now = datetime.now()
-    hari = now.strftime('%A')
-    tanggal = now.strftime('%d %B %Y')
-    jam = now.strftime('%H:%M:%S')
-    return hari, tanggal, jam
+    return now.strftime('%A'), now.strftime('%d %B %Y'), now.strftime('%H:%M:%S')
+
+def fmt_size(b):
+    if b < 1024:
+        return f"{b} B"
+    elif b < 1024**2:
+        return f"{b/1024:.1f} KB"
+    elif b < 1024**3:
+        return f"{b/1024**2:.2f} MB"
+    return f"{b/1024**3:.2f} GB"
+
+def get_downloads_path():
+    candidates = [
+        '/storage/emulated/0/Download',
+        '/sdcard/Download',
+        '/storage/emulated/0/Downloads',
+        os.path.expanduser('~/Downloads'),
+        os.path.expanduser('~/downloads'),
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return os.getcwd()
+
+def get_next_clone_folder(base_path, prefix='clone'):
+    i = 1
+    while True:
+        folder = os.path.join(base_path, f'{prefix}_{i}')
+        if not os.path.exists(folder):
+            return folder
+        i += 1
+
+def create_zip(folder_path):
+    zip_path = folder_path + '.zip'
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                fp = os.path.join(root, file)
+                arc = os.path.relpath(fp, os.path.dirname(folder_path))
+                zf.write(fp, arc)
+    return zip_path
 
 def show_banner():
     clear()
     hari, tanggal, jam = get_datetime()
     print(f"""
-{RED}                ⢀⣀⡠⠤⠤⠤⠒⠒⠲⠤⠤⠤⣀⣀                 
-{RED}            ⣀⠤⢒⣉⣥⣶⣶⣿⣿⣿⣿⣿⣿⣿⣿⣷⣶⣦⣭⣑⠲⢄⡀            
-{RED}         ⡠⠔⣩⣴⣾⣿⠿⠟⠛⠉⠉       ⠉⠉⠛⠻⢿⣿⣷⣬⣑⠦⣀         
-{RED}      ⢀⡴⢊⣴⣿⡿⠟⠉     ⢀⣠⣤⣤⣤⣤⣤⣄     ⠈⠙⠻⣿⣷⣬⡓⢄       
-{RED}     ⡰⢋⣴⣿⠟⠉      ⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦      ⠈⠙⢿⣿⣦⠳⣄     
-{RED}   ⢀⠎⣴⣿⡿⠁        ⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇        ⠹⣿⣷⡌⢦    
-{RED}  ⢠⢋⣼⣿⠏ ⣀⣤⣤⣄⣀    ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇   ⢀⣀⣤⣤⣄⣀⠈⢻⣿⣆⢣⡀  
-{RED} ⢠⢇⣾⣿⠋⣶⡟⠛⠉⠉⠛⢿⣷⡆  ⢸⣿⡿⢿⣿⣿⣿⣿⣿⡿⢿⣿⠁  ⣶⣿⠟⠋⠉⠉⠛⣷⣆⢻⣿⣇⢣  
-{RED} ⡏⣸⣿⠇⣸⡯     ⠈⣿⣿⡇ ⣸⣿  ⢈⣻⣿⣏⠁ ⢀⣿⡀ ⢾⣿⡏     ⠠⣿⡄⢿⣿⡆⣆ 
+{RED}                ⢀⣀⡠⠤⠤⠤⠒⠒⠲⠤⠤⠤⣀⣀
+{RED}            ⣀⠤⢒⣉⣥⣶⣶⣿⣿⣿⣿⣿⣿⣿⣿⣷⣶⣦⣭⣑⠲⢄⡀
+{RED}         ⡠⠔⣩⣴⣾⣿⠿⠟⠛⠉⠉       ⠉⠉⠛⠻⢿⣿⣷⣬⣑⠦⣀
+{RED}      ⢀⡴⢊⣴⣿⡿⠟⠉     ⢀⣠⣤⣤⣤⣤⣤⣄     ⠈⠙⠻⣿⣷⣬⡓⢄
+{RED}     ⡰⢋⣴⣿⠟⠉      ⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦      ⠈⠙⢿⣿⣦⠳⣄
+{RED}   ⢀⠎⣴⣿⡿⠁        ⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇        ⠹⣿⣷⡌⢦
+{RED}  ⢠⢋⣼⣿⠏ ⣀⣤⣤⣄⣀    ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇   ⢀⣀⣤⣤⣄⣀⠈⢻⣿⣆⢣⡀
+{RED} ⢠⢇⣾⣿⠋⣶⡟⠛⠉⠉⠛⢿⣷⡆  ⢸⣿⡿⢿⣿⣿⣿⣿⣿⡿⢿⣿⠁  ⣶⣿⠟⠋⠉⠉⠛⣷⣆⢻⣿⣇⢣
+{RED}⡏⣸⣿⠇⣸⡯     ⠈⣿⣿⡇ ⣸⣿  ⢈⣻⣿⣏⠁ ⢀⣿⡀ ⢾⣿⡏     ⠠⣿⡄⢿⣿⡆⣆
 {RED}⢰⢰⣿⡿ ⢿⣷⣆⡀ ⢀⡤ ⢸⣿⣷ ⢹⣿⣷⣾⣿⠏ ⢿⣿⣾⣿⣿⠁⢰⣿⣿⠃ ⢄  ⣀⣲⣿⡇⠈⣿⣿⢸⡀
 {RED}⡞⣾⣿⠇ ⠈⠙⠿⠟⠛⠁   ⠻⢿⣧⣤⣤⠈⣽⣿⣷⣿⣿⣿⡏⢠⣤⣤⣾⡿⠋   ⠙⠛⠿⠟⠋⠁ ⣹⣿⡀⡇
 {RED}⡇⣿⣿  ⢠⣶⣶⣿⣿⣿⣷⣶⣾⣦⣤⡈⠛⠛⠓⣀⣙⠛⠘⢙⣡⡀⠛⠛⡋⢡⣤⣶⣷⣶⣿⣿⣿⣿⣶⣦⡀ ⢸⣿⡇⠇
 {RED}⡇⣿⣿  ⣿⣿⣿⠟⠋⠉⠉⠉⠛⠿⣿⣿⣿⣴⣾⡿⠟⢃⢀⡙⠻⣿⣷⣼⣿⣿⡿⠟⠛⠉⠉⠉⠙⠻⣿⣿⡇ ⣸⣿⡇⡇
-{RED}⣧⢿⣿⡆ ⣿⡟⠁     ⢀  ⠉⠉⠉⣡⣀⣼⣿⠰⣿⣆⣠⡈⠉⠉⠁ ⢠      ⠙⣿⣏ ⣼⣿⠁⡇
-{RED}⢸⠸⣿⣧ ⢿⡏      ⢈⡇⢀⣠⣾⣾⣿⣿⡿⠋ ⠻⣿⣿⣿⣶⣧⣄ ⣏       ⣿⡇⢀⣿⣿⢰⠃
-{RED} ⣆⢻⣿⡆⠘⣿⣇⣀   ⣀⣼⢁⣾⡿⠛⠉⠁       ⠉⠉⠻⣿⣧⠹⣅⡀   ⣀⣺⡿ ⣼⣿⠇⡏ 
-{RED} ⠘⡌⣿⣿⡄⠙⣿⣿⣦⣿⣶⣿⢃⣾⡏    ⠈⠶⣄ ⣴⠆    ⠈⢿⣦⢹⣷⣾⣷⣾⣿⡿⠁⣸⣿⡏⡴  
-{RED}  ⠹⡜⢿⣿⣄⠈⠻⠿⠿⠛⠃⣾⣿       ⣿⠐⡗      ⢸⣿⡆⠙⠻⠿⠿⠋ ⣼⣿⠟⡰⠁  
-{RED}   ⠘⢎⢻⣿⣦⡀    ⠻⣿⣧⣀   ⢀⣸⣿⢈⣿⡂   ⢀⣀⣿⣿⠇    ⣠⣾⣿⢏⡜⠁   
-{RED}    ⠈⠳⡙⢿⣿⣦⡀   ⠈⠻⣿⣷⣿⣶⣿⣿⠇ ⢿⣿⣷⣾⣷⣾⡿⠟    ⣠⣾⣿⠟⡡⠊     
-{RED}      ⠈⠢⣝⠿⣿⣶⣄⡀  ⠈⠛⠿⠛⠛⠉   ⠙⠛⠻⠟⠋   ⣀⣤⣾⣿⠟⡡⠚       
-{RED}        ⠈⠓⢬⡛⠿⣿⣷⣦⣤⣀⡀         ⣀⣠⣤⣶⣿⣿⠟⣋⠕⠊         
-{RED}           ⠈⠑⠢⢍⣛⠻⠿⣿⣿⣿⣶⣷⣾⣶⣿⣿⣿⡿⠿⠟⣋⠭⠖⠈            
-{RED}                ⠉⠑⠒⠲⠤⠬⠭⠭⠭⠤⠴⠒⠒⠉⠁                
 
 {WHITE}╔══════════════════════════════════════════════════════════════╗
-{WHITE}║  {GREEN}COPY TOOLS — Tools Egaa{RESET}                               ║
-{WHITE}║  {CYAN}by egaaX official{WHITE}                                        ║
-{WHITE}║  {YELLOW}"copy. save. conquer."{WHITE}                                 ║
+{WHITE}║  {GREEN}COPY TOOLS — FINAL v2{RESET}                                      {WHITE}║
+{WHITE}║  {CYAN}by egaaX official{RESET}                                        {WHITE}║
+{WHITE}║  {YELLOW}"copy. save. conquer."{RESET}                                  {WHITE}║
 {WHITE}╠══════════════════════════════════════════════════════════════╣
-{WHITE}║  {CYAN}Clone: HTML | CSS | JS | Images | Fonts | API | SPA{RESET}      ║
-{WHITE}║  {CYAN}Features: Retry | Progress | Obfuscation Detector{RESET}         ║
+{WHITE}║  {CYAN}Clone: HTML | CSS | JS | Images | Fonts | API{RESET}           {WHITE}║
+{WHITE}║  {CYAN}Output: Offline-ready + ZIP export{RESET}                       {WHITE}║
 {WHITE}╚══════════════════════════════════════════════════════════════╝
-{WHITE}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
+{DIM}  {hari} | {YELLOW}{tanggal}{WHITE} | {BLUE}{jam}{RESET}
 """)
 
-def get_downloads_path():
-    paths = [
-        '/storage/emulated/0/Download',
-        '/sdcard/Download',
-        '/storage/emulated/0/Downloads',
-        os.path.expanduser('~/Downloads'),
-        os.path.expanduser('~/downloads')
-    ]
-    for p in paths:
-        if os.path.exists(p):
-            return p
-    return os.getcwd()
+# ─── CORE CLONER ───────────────────────────────────────────────────────────────
+class DeepClone:
+    MAX_RETRIES   = 3
+    MAX_WORKERS   = 8
+    REQUEST_DELAY = 0.05  # detik antar thread, anti-block
+    TIMEOUT       = 15
 
-class EnhancedDeepClone:
+    FOLDER_MAP = {
+        '.css'  : 'css',   '.js'   : 'js',    '.mjs'  : 'js',
+        '.jpg'  : 'images','.jpeg' : 'images', '.png'  : 'images',
+        '.gif'  : 'images','.svg'  : 'images', '.webp' : 'images',
+        '.ico'  : 'images','.woff' : 'fonts',  '.woff2': 'fonts',
+        '.ttf'  : 'fonts', '.otf'  : 'fonts',  '.eot'  : 'fonts',
+    }
+
+    HEADERS = {
+        'User-Agent'     : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                           'AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+    }
+
     def __init__(self, url, output_dir):
-        self.url = url
-        self.base_url = ''
+        self.url        = url
+        self.base_url   = ''
         self.output_dir = output_dir
-        self.downloaded = {}
+
+        self.downloaded  = set()
+        self.dl_lock     = threading.Lock()
+
         self.api_endpoints = set()
-        self.emails = set()
-        self.social = set()
-        self.subdomains = set()
+        self.emails        = set()
+        self.social        = set()
+        self.subdomains    = set()
+
+        self.assets      = {'css': [], 'js': [], 'images': [], 'fonts': []}
         self.total_files = 0
-        self.total_size = 0
-        self.assets = {'css': [], 'js': [], 'images': [], 'fonts': [], 'data': []}
-        self.headers_list = [
-            {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'},
-            {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'},
-            {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'},
-            {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'},
-        ]
-        self.current_header_idx = 0
+        self.total_size  = 0
 
-    def get_headers(self):
-        self.current_header_idx = (self.current_header_idx + 1) % len(self.headers_list)
-        return self.headers_list[self.current_header_idx]
+        # map: remote url → relative local path (untuk rewrite HTML)
+        self.url_to_local = {}
 
+    # ── folder setup ─────────────────────────────────────────────────────────
     def create_folders(self):
-        for f in ['css', 'js', 'images', 'fonts', 'api', 'data', 'assets']:
+        for f in ['css', 'js', 'images', 'fonts', 'api', 'data']:
             os.makedirs(os.path.join(self.output_dir, f), exist_ok=True)
 
-    def safe_request(self, url, timeout=20, retries=3):
-        for attempt in range(retries):
+    # ── request dengan retry ──────────────────────────────────────────────────
+    def safe_request(self, url, timeout=None, stream=False):
+        timeout = timeout or self.TIMEOUT
+        for attempt in range(self.MAX_RETRIES):
             try:
-                headers = self.get_headers()
                 res = requests.get(
-                    url, 
-                    headers=headers, 
-                    timeout=timeout, 
-                    verify=False, 
+                    url,
+                    headers=self.HEADERS,
+                    timeout=timeout,
+                    verify=False,
                     allow_redirects=True,
-                    stream=True
+                    stream=stream,
                 )
                 if res.status_code == 200:
                     return res
-                elif res.status_code in [429, 503]:
-                    time.sleep(2 ** attempt)
-                    continue
-            except:
-                time.sleep(1)
-                continue
+                elif res.status_code == 429:
+                    # rate limited, tunggu sebentar
+                    wait = 2 ** attempt
+                    print(f"  {YELLOW}[429] rate limit, tunggu {wait}s...{RESET}")
+                    time.sleep(wait)
+                else:
+                    return None
+            except requests.exceptions.SSLError:
+                # sudah verify=False, skip
+                return None
+            except requests.exceptions.ConnectionError as e:
+                if attempt == self.MAX_RETRIES - 1:
+                    return None
+                time.sleep(0.5)
+            except requests.exceptions.Timeout:
+                if attempt == self.MAX_RETRIES - 1:
+                    return None
+            except Exception:
+                return None
         return None
 
-    def download_file(self, url, folder, filename=None):
-        if url in self.downloaded:
-            return self.downloaded[url]
-        if url.startswith(('data:', 'blob:', 'javascript:')):
+    # ── download satu file ────────────────────────────────────────────────────
+    def download_file(self, url, subfolder_hint=None):
+        if not url or url.startswith(('data:', 'blob:', 'javascript:', '//')):
             return None
-        
-        try:
-            if not filename:
-                parsed = urlparse(url)
-                filename = os.path.basename(parsed.path)
-                if not filename or '.' not in filename:
-                    ext = ''
-                    content_type = None
-                    if 'css' in url.lower():
-                        ext = '.css'
-                    elif 'js' in url.lower():
-                        ext = '.js'
-                    elif any(x in url.lower() for x in ['.jpg', '.png', '.gif', '.svg', '.webp', '.ico']):
-                        ext = os.path.splitext(parsed.path)[1] or '.png'
-                    elif any(x in url.lower() for x in ['.woff', '.ttf', '.otf', '.eot']):
-                        ext = '.woff'
-                    else:
-                        res = self.safe_request(url, timeout=5)
-                        if res:
-                            content_type = res.headers.get('content-type', '')
-                            if 'css' in content_type:
-                                ext = '.css'
-                            elif 'javascript' in content_type:
-                                ext = '.js'
-                            elif 'image' in content_type:
-                                ext = mimetypes.guess_extension(content_type.split(';')[0]) or '.png'
-                            elif 'font' in content_type:
-                                ext = '.woff'
-                            else:
-                                ext = '.html'
-                    filename = hashlib.md5(url.encode()).hexdigest()[:12] + ext
-            
-            # Normalize filename
-            filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
-            ext = os.path.splitext(filename)[1].lower()
-            
-            folder_map = {
-                '.css': 'css', '.js': 'js', '.mjs': 'js',
-                '.jpg': 'images', '.jpeg': 'images', '.png': 'images',
-                '.gif': 'images', '.svg': 'images', '.webp': 'images',
-                '.ico': 'images', '.bmp': 'images',
-                '.woff': 'fonts', '.woff2': 'fonts', '.ttf': 'fonts',
-                '.otf': 'fonts', '.eot': 'fonts', '.svg': 'fonts' if 'font' in url else 'images'
-            }
-            save_folder = os.path.join(self.output_dir, folder_map.get(ext, ''))
-            os.makedirs(save_folder, exist_ok=True)
-            filepath = os.path.join(save_folder, filename)
-            
-            if os.path.exists(filepath):
-                self.downloaded[url] = filepath
-                return filepath
-            
-            res = self.safe_request(url, timeout=15)
-            if res:
-                with open(filepath, 'wb') as f:
-                    for chunk in res.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                self.downloaded[url] = filepath
-                self.total_files += 1
-                self.total_size += len(res.content)
-                return filepath
-        except:
-            pass
-        return None
 
+        with self.dl_lock:
+            if url in self.downloaded:
+                return self.url_to_local.get(url)
+            self.downloaded.add(url)
+
+        time.sleep(self.REQUEST_DELAY)
+
+        try:
+            parsed   = urlparse(url)
+            basename = os.path.basename(parsed.path)
+            ext      = os.path.splitext(basename)[1].lower()
+
+            if not basename or '.' not in basename:
+                # tebak extension dari URL string
+                for k in self.FOLDER_MAP:
+                    if k in url.lower():
+                        ext = k
+                        break
+                else:
+                    ext = '.bin'
+                basename = hashlib.md5(url.encode()).hexdigest()[:12] + ext
+
+            # sanitize nama file
+            basename = re.sub(r'[<>:"/\\|?*\s]', '_', basename)
+
+            subfolder = self.FOLDER_MAP.get(ext, subfolder_hint or '')
+            save_dir  = os.path.join(self.output_dir, subfolder)
+            os.makedirs(save_dir, exist_ok=True)
+
+            # hindari tabrakan nama
+            filepath = os.path.join(save_dir, basename)
+            if os.path.exists(filepath):
+                stem, suf = os.path.splitext(basename)
+                basename  = f"{stem}_{hashlib.md5(url.encode()).hexdigest()[:6]}{suf}"
+                filepath  = os.path.join(save_dir, basename)
+
+            res = self.safe_request(url, timeout=10)
+            if not res:
+                return None
+
+            content = res.content
+            # CSS: proses url() internal
+            if ext == '.css':
+                try:
+                    css_text = content.decode('utf-8', errors='replace')
+                    css_text = self._process_css_urls(css_text, url)
+                    content  = css_text.encode('utf-8')
+                except Exception:
+                    pass
+
+            with open(filepath, 'wb') as f:
+                f.write(content)
+
+            rel_path = os.path.join(subfolder, basename)
+
+            with self.dl_lock:
+                self.url_to_local[url] = rel_path
+                self.total_files += 1
+                self.total_size  += len(content)
+
+            return rel_path
+
+        except Exception:
+            return None
+
+    # ── proses url() di dalam CSS ─────────────────────────────────────────────
+    def _process_css_urls(self, css_text, css_base_url):
+        pattern = re.compile(r'url\s*\(\s*(["\']?)([^"\')\s]+)\1\s*\)', re.IGNORECASE)
+
+        def replace(m):
+            quote, raw = m.group(1), m.group(2)
+            if raw.startswith(('data:', 'blob:', 'http', '//')):
+                return m.group(0)
+            full = urljoin(css_base_url, raw)
+            local = self.download_file(full)
+            if local:
+                # dari folder css ke target
+                target_name = os.path.basename(local)
+                target_sub  = os.path.dirname(local)
+                # relative dari css/ ke subfolder lain
+                rel = os.path.relpath(
+                    os.path.join(self.output_dir, local),
+                    os.path.join(self.output_dir, 'css')
+                )
+                return f"url({quote}{rel}{quote})"
+            return m.group(0)
+
+        return pattern.sub(replace, css_text)
+
+    # ── ekstrak API endpoints ──────────────────────────────────────────────────
     def extract_apis(self, content):
-        apis = set()
         patterns = [
-            r'fetch\s*\(\s*["\']([^"\']+)["\']',
-            r'axios\.[a-z]+\s*\(\s*["\']([^"\']+)["\']',
-            r'\.(?:get|post|put|delete|patch|request)\s*\(\s*["\']([^"\']+)["\']',
-            r'\/api\/[a-zA-Z0-9/_-]+',
-            r'https?://[^"\']+api[^"\']*',
-            r'graphql',
-            r'\/v[0-9]+\/[a-zA-Z0-9/_-]+',
-            r'\/rest\/[a-zA-Z0-9/_-]+',
-            r'\/rpc\/[a-zA-Z0-9/_-]+',
-            r'ws://[^"\']+',  # WebSocket
-            r'wss://[^"\']+',  # WebSocket Secure
-            r'\/socket\.io',
+            r'fetch\s*\(\s*["\']([^"\']{4,})["\']',
+            r'axios\.[a-z]+\s*\(\s*["\']([^"\']{4,})["\']',
+            r'\.(?:get|post|put|delete|patch)\s*\(\s*["\']([^"\']{4,})["\']',
+            r'(\/api\/[a-zA-Z0-9/_\-?=&]+)',
+            r'(\/v\d+\/[a-zA-Z0-9/_\-?=&]+)',
+            r'(\/rest\/[a-zA-Z0-9/_\-?=&]+)',
+            r'(\/graphql)',
+            r'(\/rpc\/[a-zA-Z0-9/_\-?=&]+)',
         ]
-        for pattern in patterns:
-            found = re.findall(pattern, content, re.IGNORECASE)
-            for f in found:
+        apis = set()
+        for p in patterns:
+            for found in re.findall(p, content, re.IGNORECASE):
+                f = found if isinstance(found, str) else found[0]
                 if f and not f.startswith(('data:', 'blob:', 'javascript:')):
-                    if f.startswith(('/', 'api', 'http', './', '../')):
-                        # Normalize API path
-                        if f.startswith('/') and not f.startswith('//'):
-                            f = urljoin(self.base_url, f)
-                        apis.add(f)
+                    apis.add(f)
         return apis
 
     def extract_emails(self, content):
-        pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-        found = re.findall(pattern, content)
-        for f in found:
-            if not f.endswith(('.png', '.jpg', '.css', '.js', '.svg', '.webp')):
-                self.emails.add(f)
+        for e in re.findall(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', content):
+            if not e.endswith(('.png', '.jpg', '.css', '.js', '.svg', '.gif')):
+                self.emails.add(e)
 
     def extract_social(self, content):
         patterns = {
-            'instagram': r'(?:https?://)?(?:www\.)?instagram\.com/([a-zA-Z0-9_.]+)',
-            'tiktok': r'(?:https?://)?(?:www\.)?tiktok\.com/@([a-zA-Z0-9_.]+)',
-            'twitter': r'(?:https?://)?(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)',
-            'facebook': r'(?:https?://)?(?:www\.)?facebook\.com/([a-zA-Z0-9_.]+)',
-            'youtube': r'(?:https?://)?(?:www\.)?youtube\.com/(?:c|channel|user)/([a-zA-Z0-9_-]+)',
-            'github': r'(?:https?://)?(?:www\.)?github\.com/([a-zA-Z0-9_-]+)',
-            'linkedin': r'(?:https?://)?(?:www\.)?linkedin\.com/(?:in|company)/([a-zA-Z0-9_-]+)',
+            'instagram': r'instagram\.com/([a-zA-Z0-9_.]{2,})',
+            'tiktok'   : r'tiktok\.com/@([a-zA-Z0-9_.]{2,})',
+            'twitter'  : r'(?:twitter|x)\.com/([a-zA-Z0-9_]{2,})',
+            'facebook' : r'facebook\.com/([a-zA-Z0-9_.]{2,})',
+            'youtube'  : r'youtube\.com/(?:c|channel|user)/([a-zA-Z0-9_\-]{2,})',
+            'github'   : r'github\.com/([a-zA-Z0-9_\-]{2,})',
+            'linkedin' : r'linkedin\.com/(?:in|company)/([a-zA-Z0-9_\-]{2,})',
         }
-        for platform, pattern in patterns.items():
-            found = re.findall(pattern, content)
-            for f in found:
-                self.social.add(f"{platform}: {f}")
+        for platform, pat in patterns.items():
+            for found in re.findall(pat, content, re.IGNORECASE):
+                slug = found if isinstance(found, str) else found[0]
+                if slug and slug not in ('www', 'about', 'help', 'login', 'signup'):
+                    self.social.add(f"{platform}: @{slug}")
 
-    def extract_subdomains(self, content):
-        domain = urlparse(self.url).netloc
-        # Remove port if exists
-        domain = domain.split(':')[0]
-        # Escape domain for regex
-        escaped_domain = re.escape(domain).replace(r'\.', r'\.')
-        sub_pattern = r'(?:https?://)?([a-zA-Z0-9-]+)\.' + escaped_domain
-        subs = re.findall(sub_pattern, content)
-        for sub in subs:
-            if sub not in ['www', 'api', 'app', 'dev', 'test', 'staging', 'mail', 'ftp', 'cdn']:
-                self.subdomains.add(sub + '.' + domain)
+    # ── proses HTML utama ─────────────────────────────────────────────────────
+    def process_html(self, raw_html):
+        soup = BeautifulSoup(raw_html, 'html.parser')
 
-    def process_css_assets(self, content, base_url):
-        # Extract urls from CSS
-        pattern = r'url\s*\(\s*["\']?([^"\')\s]+)["\']?\s*\)'
-        matches = re.findall(pattern, content)
-        processed = content
-        for m in matches:
-            if not m.startswith(('data:', 'blob:', '//')):
-                full_url = urljoin(base_url, m)
-                full_url = urldefrag(full_url)[0]
-                if full_url:
-                    local = self.download_file(full_url, self.output_dir)
-                    if local:
-                        processed = processed.replace(m, os.path.basename(local))
-        
-        # Extract @font-face
-        font_pattern = r'@font-face\s*\{[^}]*url\s*\(\s*["\']?([^"\')\s]+)["\']?\s*\)[^}]*\}'
-        font_matches = re.findall(font_pattern, content, re.DOTALL)
-        for m in font_matches:
-            if not m.startswith(('data:', 'blob:', '//')):
-                full_url = urljoin(base_url, m)
-                full_url = urldefrag(full_url)[0]
-                if full_url:
-                    self.assets['fonts'].append(full_url)
-        
-        return processed
+        # CSS links
+        for tag in soup.find_all('link', rel=lambda r: r and 'stylesheet' in r):
+            href = tag.get('href', '')
+            if href and not href.startswith(('data:', '//', 'http')):
+                full = urldefrag(urljoin(self.base_url, href))[0]
+                if full:
+                    self.assets['css'].append(full)
+            elif href and href.startswith('http'):
+                full = urldefrag(href)[0]
+                self.assets['css'].append(full)
 
-    def process_html(self, content):
-        soup = BeautifulSoup(content, 'html.parser')
-        
-        # Extract CSS
-        for tag in soup.find_all('link'):
-            if tag.get('rel') and 'stylesheet' in tag.get('rel'):
-                href = tag.get('href')
-                if href:
-                    full_url = urljoin(self.base_url, href)
-                    full_url = urldefrag(full_url)[0]
-                    if full_url:
-                        self.assets['css'].append(full_url)
-                        # Download CSS and process its assets
-                        css_path = self.download_file(full_url, self.output_dir)
-                        if css_path:
-                            with open(css_path, 'r', encoding='utf-8') as f:
-                                css_content = f.read()
-                            processed_css = self.process_css_assets(css_content, full_url)
-                            with open(css_path, 'w', encoding='utf-8') as f:
-                                f.write(processed_css)
-        
-        # Extract JS
+        # Script tags
         for tag in soup.find_all('script'):
-            src = tag.get('src')
-            if src:
-                full_url = urljoin(self.base_url, src)
-                full_url = urldefrag(full_url)[0]
-                if full_url:
-                    self.assets['js'].append(full_url)
-                    # Download and analyze JS
-                    js_path = self.download_file(full_url, self.output_dir)
-                    if js_path:
-                        with open(js_path, 'r', encoding='utf-8', errors='ignore') as f:
-                            js_content = f.read()
-                        apis = self.extract_apis(js_content)
-                        for api in apis:
-                            self.api_endpoints.add(api)
-                        self.extract_emails(js_content)
-                        self.extract_social(js_content)
-                        self.extract_subdomains(js_content)
+            src = tag.get('src', '')
+            if src and not src.startswith(('data:', '//', 'blob:')):
+                full = urldefrag(urljoin(self.base_url, src))[0]
+                if full:
+                    self.assets['js'].append(full)
             elif tag.string:
                 js = str(tag.string)
-                apis = self.extract_apis(js)
-                for api in apis:
-                    self.api_endpoints.add(api)
+                self.api_endpoints.update(self.extract_apis(js))
                 self.extract_emails(js)
                 self.extract_social(js)
-                self.extract_subdomains(js)
-        
-        # Extract Images
+
+        # Images (img, source, video poster, meta og:image)
         for tag in soup.find_all(['img', 'source']):
-            src = tag.get('src')
-            if src:
-                full_url = urljoin(self.base_url, src)
-                full_url = urldefrag(full_url)[0]
-                if full_url:
-                    self.assets['images'].append(full_url)
-            # Also check srcset
-            srcset = tag.get('srcset')
-            if srcset:
-                for item in srcset.split(','):
-                    url_part = item.strip().split(' ')[0]
-                    if url_part:
-                        full_url = urljoin(self.base_url, url_part)
-                        full_url = urldefrag(full_url)[0]
-                        if full_url:
-                            self.assets['images'].append(full_url)
-        
-        # Extract favicon
-        for tag in soup.find_all('link'):
-            rel = tag.get('rel', [])
-            if 'icon' in rel or 'shortcut icon' in rel:
-                href = tag.get('href')
-                if href:
-                    full_url = urljoin(self.base_url, href)
-                    full_url = urldefrag(full_url)[0]
-                    if full_url:
-                        self.assets['images'].append(full_url)
-        
-        # Extract meta tags
-        meta_tags = {
-            'og:title': None,
-            'og:description': None,
-            'og:image': None,
-            'og:url': None,
-            'twitter:card': None,
-            'twitter:image': None,
-            'description': None,
-            'keywords': None,
-        }
-        for tag in soup.find_all('meta'):
-            name = tag.get('name', '').lower()
-            prop = tag.get('property', '').lower()
+            for attr in ('src', 'data-src', 'data-lazy', 'srcset'):
+                val = tag.get(attr, '')
+                if not val:
+                    continue
+                # srcset bisa multi URL
+                for chunk in val.split(','):
+                    src = chunk.strip().split()[0]
+                    if src and not src.startswith(('data:', 'blob:', '//')):
+                        full = urldefrag(urljoin(self.base_url, src))[0]
+                        if full:
+                            self.assets['images'].append(full)
+
+        for tag in soup.find_all('meta', property='og:image'):
             content_val = tag.get('content', '')
-            
-            if prop in meta_tags:
-                meta_tags[prop] = content_val
-            if name in meta_tags:
-                meta_tags[name] = content_val
-            
-            # Extract OG image
-            if prop == 'og:image' or name == 'twitter:image':
-                if content_val:
-                    full_url = urljoin(self.base_url, content_val)
-                    full_url = urldefrag(full_url)[0]
-                    if full_url:
-                        self.assets['images'].append(full_url)
-        
-        # Save meta data
-        if any(meta_tags.values()):
-            with open(os.path.join(self.output_dir, 'data', 'metadata.json'), 'w') as f:
-                json.dump(meta_tags, f, indent=2)
-        
-        # Extract APIs from HTML
-        apis = self.extract_apis(content)
-        for api in apis:
-            self.api_endpoints.add(api)
-        self.extract_emails(content)
-        self.extract_social(content)
-        self.extract_subdomains(content)
-        
+            if content_val and content_val.startswith('http'):
+                self.assets['images'].append(content_val)
+
+        # Fonts
+        for tag in soup.find_all('link'):
+            href = tag.get('href', '')
+            if href and any(x in href.lower() for x in ['font', '.woff', '.ttf', '.otf', '.eot']):
+                if not href.startswith(('data:', '//')):
+                    full = urldefrag(urljoin(self.base_url, href))[0]
+                    if full:
+                        self.assets['fonts'].append(full)
+
+        # Inline styles — cari url()
+        for tag in soup.find_all(style=True):
+            inline = tag.get('style', '')
+            for m in re.findall(r'url\(["\']?([^"\')\s]+)["\']?\)', inline):
+                if not m.startswith(('data:', 'blob:')):
+                    full = urldefrag(urljoin(self.base_url, m))[0]
+                    if full:
+                        self.assets['images'].append(full)
+
+        # Global extractions
+        html_str = str(soup)
+        self.api_endpoints.update(self.extract_apis(html_str))
+        self.extract_emails(html_str)
+        self.extract_social(html_str)
+
+        # Subdomains
+        domain = urlparse(self.url).netloc
+        esc    = re.escape(domain)
+        for sub in re.findall(r'([a-zA-Z0-9\-]+)\.' + esc, html_str):
+            if sub not in ('www', 'api', 'app', 'dev', 'test', 'staging', 'mail', 'ftp', 'cdn'):
+                self.subdomains.add(f"{sub}.{domain}")
+
         return str(soup)
 
+    # ── download semua asset secara parallel ──────────────────────────────────
     def download_assets(self):
-        all_assets = []
-        all_assets.extend([(url, 'css') for url in self.assets['css']])
-        all_assets.extend([(url, 'js') for url in self.assets['js']])
-        all_assets.extend([(url, 'image') for url in self.assets['images']])
-        all_assets.extend([(url, 'font') for url in self.assets['fonts']])
-        
-        if not all_assets:
-            return
-        
-        print(f"  {GREEN}Mengunduh {len(all_assets)} asset...{RESET}")
-        
-        with ThreadPoolExecutor(max_workers=20) as executor:
-            futures = {
-                executor.submit(self.download_file, url, self.output_dir): url 
-                for url, _ in all_assets
-            }
-            completed = 0
-            total = len(futures)
-            for future in as_completed(futures):
-                completed += 1
-                if completed % 50 == 0 or completed == total:
-                    print(f"  Progress: {completed}/{total} asset", end='\r')
-            print(f"  {GREEN}Download selesai: {total} asset{RESET}")
+        tasks = []
+        for url in self.assets['css']:
+            tasks.append(url)
+        for url in self.assets['js']:
+            tasks.append(url)
+        for url in self.assets['images']:
+            tasks.append(url)
+        for url in self.assets['fonts']:
+            tasks.append(url)
 
+        # deduplicate
+        tasks = list(dict.fromkeys(tasks))
+
+        done = 0
+        total = len(tasks)
+
+        def progress(n):
+            bar_len = 30
+            filled  = int(bar_len * n / total) if total else bar_len
+            bar     = '█' * filled + '░' * (bar_len - filled)
+            pct     = int(100 * n / total) if total else 100
+            print(f"  \r  [{CYAN}{bar}{RESET}] {pct}% ({n}/{total})", end='', flush=True)
+
+        with ThreadPoolExecutor(max_workers=self.MAX_WORKERS) as executor:
+            futures = {executor.submit(self.download_file, url): url for url in tasks}
+            for future in as_completed(futures):
+                done += 1
+                progress(done)
+                try:
+                    future.result()
+                except Exception:
+                    pass
+
+        print()  # newline setelah progress bar
+
+    # ── rewrite HTML — ganti URL remote → path lokal ──────────────────────────
+    def rewrite_html(self, html_str):
+        """Ganti semua remote URL di HTML dengan path file lokal yang sudah didownload."""
+        for remote_url, local_path in self.url_to_local.items():
+            # ganti versi dengan dan tanpa quotes
+            for variant in [
+                f'href="{remote_url}"',
+                f"href='{remote_url}'",
+                f'src="{remote_url}"',
+                f"src='{remote_url}'",
+                f'url("{remote_url}")',
+                f"url('{remote_url}')",
+                f'url({remote_url})',
+            ]:
+                attr = variant.split('=')[0] if '=' in variant else 'url'
+                if attr in ('href', 'src'):
+                    sep = variant[len(attr)+1]  # " atau '
+                    html_str = html_str.replace(variant, f'{attr}={sep}{local_path}{sep}')
+                else:
+                    if f'"{remote_url}"' in variant:
+                        html_str = html_str.replace(variant, f'url("{local_path}")')
+                    elif f"'{remote_url}'" in variant:
+                        html_str = html_str.replace(variant, f"url('{local_path}')")
+                    else:
+                        html_str = html_str.replace(variant, f'url({local_path})')
+        return html_str
+
+    # ── main runner ───────────────────────────────────────────────────────────
     def run(self):
-        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {GREEN}Clone dimulai{RESET}")
-        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        sep = f"{CYAN}  {'─'*48}{RESET}"
+
+        print(f"\n{sep}")
+        print(f"  {GREEN}» Clone dimulai{RESET}")
         print(f"  Target  : {CYAN}{self.url}{RESET}")
         print(f"  Output  : {CYAN}{self.output_dir}{RESET}")
-        print()
+        print(sep)
+
         self.create_folders()
-        
-        print(f"  {GREEN}Mengambil halaman utama...{RESET}")
-        res = self.safe_request(self.url, timeout=30)
+
+        # ── fetch halaman utama ──
+        print(f"\n  {WHITE}[1/4]{RESET} Mengambil halaman utama...", end=' ', flush=True)
+        res = self.safe_request(self.url, timeout=20)
         if not res:
-            print(f"  {RED}Gagal fetch website. Coba URL lain.{RESET}")
-            return
-        
-        self.base_url = f"{res.url.rstrip('/')}/"
-        content = res.text
-        print(f"  {GREEN}Memproses HTML...{RESET}")
-        html_content = self.process_html(content)
-        
-        # Save main HTML
-        with open(os.path.join(self.output_dir, 'index.html'), 'w', encoding='utf-8') as f:
-            f.write(html_content)
-        print(f"  {GREEN}index.html selesai{RESET}")
-        
-        # Download all assets
-        self.download_assets()
-        
-        # Save extracted data
+            print(f"{RED}GAGAL{RESET}")
+            print(f"  {RED}Pastikan URL benar dan ada koneksi internet.{RESET}")
+            return False
+        print(f"{GREEN}OK{RESET}")
+
+        # deteksi encoding
+        enc = res.encoding or 'utf-8'
+        try:
+            raw_html = res.content.decode(enc, errors='replace')
+        except Exception:
+            raw_html = res.text
+
+        self.base_url = res.url.rstrip('/') + '/'
+
+        # ── proses HTML ──
+        print(f"  {WHITE}[2/4]{RESET} Memproses HTML & mengekstrak asset...", end=' ', flush=True)
+        processed_html = self.process_html(raw_html)
+        print(f"{GREEN}OK{RESET}")
+
+        # ── download asset ──
+        total_assets = sum(len(v) for v in self.assets.values())
+        print(f"  {WHITE}[3/4]{RESET} Mengunduh {total_assets} asset (parallel)...")
+        if total_assets > 0:
+            self.download_assets()
+        else:
+            print(f"  {DIM}  Tidak ada asset eksternal.{RESET}")
+
+        # ── rewrite HTML → lokal ──
+        print(f"  {WHITE}[4/4]{RESET} Menulis file output...", end=' ', flush=True)
+        final_html = self.rewrite_html(processed_html)
+
+        index_path = os.path.join(self.output_dir, 'index.html')
+        with open(index_path, 'w', encoding='utf-8') as f:
+            f.write(final_html)
+
+        # simpan data intelijen
         if self.api_endpoints:
-            with open(os.path.join(self.output_dir, 'api', 'endpoints.json'), 'w') as f:
-                json.dump(list(self.api_endpoints), f, indent=2)
-        
+            p = os.path.join(self.output_dir, 'api', 'endpoints.json')
+            with open(p, 'w', encoding='utf-8') as f:
+                json.dump(sorted(self.api_endpoints), f, indent=2, ensure_ascii=False)
+
         if self.emails:
-            with open(os.path.join(self.output_dir, 'data', 'emails.txt'), 'w') as f:
+            p = os.path.join(self.output_dir, 'data', 'emails.txt')
+            with open(p, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(sorted(self.emails)))
-        
+
         if self.social:
-            with open(os.path.join(self.output_dir, 'data', 'social.txt'), 'w') as f:
+            p = os.path.join(self.output_dir, 'data', 'social.txt')
+            with open(p, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(sorted(self.social)))
-        
+
         if self.subdomains:
-            with open(os.path.join(self.output_dir, 'data', 'subdomains.txt'), 'w') as f:
+            p = os.path.join(self.output_dir, 'data', 'subdomains.txt')
+            with open(p, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(sorted(self.subdomains)))
-        
-        # Clean empty folders
+
+        # bersihkan folder kosong
         for folder in ['css', 'js', 'images', 'fonts', 'api', 'data']:
-            folder_path = os.path.join(self.output_dir, folder)
-            if os.path.exists(folder_path) and not os.listdir(folder_path):
-                os.rmdir(folder_path)
-        
-        # Create summary
-        summary = {
-            'url': self.url,
-            'timestamp': datetime.now().isoformat(),
-            'html': 1,
-            'css': len(self.assets['css']),
-            'js': len(self.assets['js']),
-            'images': len(self.assets['images']),
-            'fonts': len(self.assets['fonts']),
-            'api_endpoints': len(self.api_endpoints),
-            'emails': len(self.emails),
-            'social': len(self.social),
-            'subdomains': len(self.subdomains),
-            'total_files': self.total_files,
-            'total_size': self.total_size,
-        }
-        with open(os.path.join(self.output_dir, 'data', 'summary.json'), 'w') as f:
-            json.dump(summary, f, indent=2)
-        
-        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+            fp = os.path.join(self.output_dir, folder)
+            if os.path.exists(fp) and not os.listdir(fp):
+                os.rmdir(fp)
+
+        print(f"{GREEN}OK{RESET}")
+
+        # ── summary ──
+        print(f"\n{sep}")
         print(f"  {GREEN}HASIL CLONE{RESET}")
-        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"  HTML   : 1 file")
-        if self.assets['css']:
-            print(f"  CSS    : {len(self.assets['css'])} file")
-        if self.assets['js']:
-            print(f"  JS     : {len(self.assets['js'])} file")
-        if self.assets['images']:
-            print(f"  Images : {len(self.assets['images'])} file")
-        if self.assets['fonts']:
-            print(f"  Fonts  : {len(self.assets['fonts'])} file")
-        if self.api_endpoints:
-            print(f"  API    : {len(self.api_endpoints)} endpoint")
-        if self.emails:
-            print(f"  Emails : {len(self.emails)} ditemukan")
-        if self.social:
-            print(f"  Social : {len(self.social)} ditemukan")
-        if self.subdomains:
-            print(f"  Subdom : {len(self.subdomains)} ditemukan")
-        print(f"  Total  : {self.total_files} file")
-        print(f"  Size   : {self.total_size:,} bytes")
-        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"\n{GREEN}Clone selesai! {self.output_dir}{RESET}")
+        print(sep)
 
-def create_zip(folder_path):
-    zip_path = folder_path + '.zip'
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, os.path.dirname(folder_path))
-                zipf.write(file_path, arcname)
-    return zip_path
+        rows = [
+            ('HTML',       '1 file'),
+            ('CSS',        f"{len(self.assets['css'])} file"),
+            ('JS',         f"{len(self.assets['js'])} file"),
+            ('Images',     f"{len(self.assets['images'])} file"),
+            ('Fonts',      f"{len(self.assets['fonts'])} file"),
+            ('API',        f"{len(self.api_endpoints)} endpoint"),
+            ('Emails',     f"{len(self.emails)} ditemukan"),
+            ('Social',     f"{len(self.social)} ditemukan"),
+            ('Subdomains', f"{len(self.subdomains)} ditemukan"),
+            ('Total file', str(self.total_files)),
+            ('Total size', fmt_size(self.total_size)),
+        ]
+        for label, val in rows:
+            print(f"  {CYAN}{label:<12}{RESET} {val}")
 
-def get_next_clone_folder(base_path):
-    i = 1
-    while True:
-        folder = os.path.join(base_path, f'clone_{i}')
-        if not os.path.exists(folder):
-            return folder
-        i += 1
+        print(sep)
+        print(f"\n  {GREEN}Output: {self.output_dir}{RESET}")
+
+        # ── buat ZIP ──
+        print(f"\n  Membuat ZIP...", end=' ', flush=True)
+        zip_path = create_zip(self.output_dir)
+        zip_size = os.path.getsize(zip_path)
+        print(f"{GREEN}OK{RESET} — {fmt_size(zip_size)}")
+        print(f"  {CYAN}{zip_path}{RESET}")
+
+        return zip_path
+
+# ─── MENU FUNCTIONS ────────────────────────────────────────────────────────────
+def ask_url():
+    url = input(f"\n  {YELLOW}URL target{RESET}: ").strip()
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    return url
 
 def clone_deep():
-    url = input(f"  URL: ").strip()
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
+    url          = ask_url()
     download_path = get_downloads_path()
-    base_dir = os.path.join(download_path, 'BONGKAR_WEB')
+    base_dir      = os.path.join(download_path, 'BONGKAR_WEB')
     os.makedirs(base_dir, exist_ok=True)
-    output_dir = get_next_clone_folder(base_dir)
-    clone = EnhancedDeepClone(url, output_dir)
-    clone.run()
-    zip_path = create_zip(output_dir)
-    print(f"\n{GREEN}ZIP selesai: {zip_path}{RESET}")
-    input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
+    output_dir   = get_next_clone_folder(base_dir)
+
+    cloner = DeepClone(url, output_dir)
+    cloner.run()
+
+    input(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
 
 def check_status():
-    url = input(f"  URL: ").strip()
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
+    url = ask_url()
     try:
-        start_time = time.time()
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10, verify=False)
-        elapsed = time.time() - start_time
-        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+        start = time.time()
+        res   = requests.get(
+            url,
+            headers={'User-Agent': 'Mozilla/5.0'},
+            timeout=10,
+            verify=False,
+            allow_redirects=True,
+        )
+        elapsed = time.time() - start
+
+        sep = f"{CYAN}  {'─'*48}{RESET}"
+        print(f"\n{sep}")
         print(f"  HTTP STATUS")
-        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"  URL    : {url}")
-        print(f"  Status : {res.status_code} {res.reason}")
-        print(f"  Size   : {len(res.text):,} bytes")
-        print(f"  Time   : {elapsed:.2f}s")
-        headers = res.headers
-        print(f"  Server : {headers.get('server', 'N/A')}")
-        print(f"  Type   : {headers.get('content-type', 'N/A')}")
-        if res.status_code == 200:
-            print(f"  ONLINE")
-        elif res.status_code in [301, 302, 307, 308]:
-            print(f"  REDIRECT to: {headers.get('location', 'N/A')}")
-        elif res.status_code >= 500:
-            print(f"  SERVER ERROR")
-        else:
-            print(f"  {res.status_code}")
+        print(sep)
+        color = GREEN if res.status_code == 200 else (YELLOW if res.status_code < 500 else RED)
+        print(f"  URL      : {url}")
+        print(f"  Status   : {color}{res.status_code} {res.reason}{RESET}")
+        print(f"  Final URL: {res.url}")
+        print(f"  Size     : {fmt_size(len(res.content))}")
+        print(f"  Time     : {elapsed:.2f}s")
+        server = res.headers.get('Server', 'N/A')
+        powered = res.headers.get('X-Powered-By', 'N/A')
+        print(f"  Server   : {server}")
+        print(f"  Powered  : {powered}")
+        print(sep)
+    except requests.exceptions.ConnectionError:
+        print(f"  {RED}Koneksi gagal — host tidak bisa dijangkau{RESET}")
+    except requests.exceptions.Timeout:
+        print(f"  {RED}Timeout{RESET}")
     except Exception as e:
-        print(f"  Gagal: {e}")
-    input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
+        print(f"  {RED}Error: {e}{RESET}")
+
+    input(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
 
 def get_metadata():
-    url = input(f"  URL: ").strip()
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
+    url = ask_url()
     try:
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10, verify=False)
-        html = res.text
+        res  = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10, verify=False)
+        enc  = res.encoding or 'utf-8'
+        html = res.content.decode(enc, errors='replace')
         soup = BeautifulSoup(html, 'html.parser')
-        title = soup.title.string.strip() if soup.title else 'N/A'
-        desc = soup.find('meta', attrs={'name': 'description'})
-        desc = desc.get('content', 'N/A') if desc else 'N/A'
-        keywords = soup.find('meta', attrs={'name': 'keywords'})
-        keywords = keywords.get('content', 'N/A') if keywords else 'N/A'
-        og_title = soup.find('meta', property='og:title')
-        og_title = og_title.get('content', 'N/A') if og_title else 'N/A'
-        og_desc = soup.find('meta', property='og:description')
-        og_desc = og_desc.get('content', 'N/A') if og_desc else 'N/A'
-        
-        links = len(soup.find_all('a'))
-        images = len(soup.find_all('img'))
+
+        title  = (soup.title.string or '').strip() if soup.title else 'N/A'
+        desc_t = soup.find('meta', attrs={'name': 'description'})
+        desc   = desc_t.get('content', 'N/A')[:100] if desc_t else 'N/A'
+        kw_t   = soup.find('meta', attrs={'name': 'keywords'})
+        kw     = kw_t.get('content', 'N/A')[:80] if kw_t else 'N/A'
+        og_img = ''
+        og_t   = soup.find('meta', property='og:image')
+        if og_t:
+            og_img = og_t.get('content', '')[:80]
+
+        links   = len(soup.find_all('a'))
+        images  = len(soup.find_all('img'))
         scripts = len(soup.find_all('script'))
-        styles = len(soup.find_all('link', rel='stylesheet'))
-        
-        # Detect if SPA
-        spa_patterns = ['react', 'vue', 'angular', 'app-root', 'ng-app', '#app', '__NEXT_DATA__']
-        is_spa = any(p in html.lower() for p in spa_patterns)
-        
-        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
+        styles  = len(soup.find_all('link', rel='stylesheet'))
+        forms   = len(soup.find_all('form'))
+
+        sep = f"{CYAN}  {'─'*48}{RESET}"
+        print(f"\n{sep}")
         print(f"  METADATA")
-        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
+        print(sep)
         print(f"  Title   : {title}")
-        print(f"  Desc    : {desc[:80]}{'...' if len(desc) > 80 else ''}")
-        print(f"  Keywords: {keywords[:80]}{'...' if len(keywords) > 80 else ''}")
-        print(f"  OG Title: {og_title}")
-        print(f"  OG Desc : {og_desc[:80]}{'...' if len(og_desc) > 80 else ''}")
+        print(f"  Desc    : {desc}")
+        print(f"  Keywords: {kw}")
+        if og_img:
+            print(f"  OG Image: {og_img}")
         print(f"  Links   : {links}")
         print(f"  Images  : {images}")
         print(f"  Scripts : {scripts}")
         print(f"  CSS     : {styles}")
-        print(f"  SPA     : {is_spa}")
-        print(f"  Size    : {len(html):,} bytes")
+        print(f"  Forms   : {forms}")
+        print(f"  Size    : {fmt_size(len(html))}")
+        print(sep)
     except Exception as e:
-        print(f"  Gagal: {e}")
-    input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
+        print(f"  {RED}Error: {e}{RESET}")
+
+    input(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
 
 def list_files():
     download_path = get_downloads_path()
-    base_dir = os.path.join(download_path, 'BONGKAR_WEB')
+    base_dir      = os.path.join(download_path, 'BONGKAR_WEB')
+
     if not os.path.exists(base_dir):
-        print(f"  Folder BONGKAR_WEB tidak ditemukan")
-        input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
+        print(f"  {YELLOW}Folder BONGKAR_WEB belum ada.{RESET}")
+        input(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
         return
-    
-    clone_folders = []
-    for item in os.listdir(base_dir):
-        item_path = os.path.join(base_dir, item)
-        if os.path.isdir(item_path) and item.startswith('clone_'):
-            clone_folders.append(item)
-    
-    if not clone_folders:
-        print(f"  Belum ada clone")
-        input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
+
+    folders = sorted([
+        d for d in os.listdir(base_dir)
+        if os.path.isdir(os.path.join(base_dir, d))
+    ])
+
+    if not folders:
+        print(f"  {YELLOW}Belum ada hasil clone.{RESET}")
+        input(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
         return
-    
-    clone_folders.sort()
-    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  HASIL CLONE ({len(clone_folders)} folder)")
-    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-    
-    total_files = 0
-    total_size = 0
-    for folder in clone_folders:
-        folder_path = os.path.join(base_dir, folder)
-        file_count = 0
-        folder_size = 0
-        for root, dirs, files in os.walk(folder_path):
-            file_count += len(files)
-            for f in files:
-                path = os.path.join(root, f)
-                folder_size += os.path.getsize(path)
-        total_files += file_count
-        total_size += folder_size
-        
-        # Load summary if exists
-        summary_path = os.path.join(folder_path, 'data', 'summary.json')
-        if os.path.exists(summary_path):
-            with open(summary_path, 'r') as f:
-                summary = json.load(f)
-            print(f"\n  {folder} ({summary.get('total_files', file_count)} files, {summary.get('total_size', folder_size):,} bytes)")
-            print(f"     URL: {summary.get('url', 'N/A')}")
-            if 'emails' in summary and summary['emails']:
-                print(f"     Emails: {summary['emails']}")
-        else:
-            print(f"\n  {folder} ({file_count} files, {folder_size:,} bytes)")
-        
-        # Show subfolders
-        for sub in ['html', 'css', 'js', 'images', 'fonts', 'api', 'data']:
-            sub_path = os.path.join(folder_path, sub)
-            if os.path.exists(sub_path):
-                count = len([f for f in os.listdir(sub_path) if os.path.isfile(os.path.join(sub_path, f))])
-                if count > 0:
-                    print(f"     {sub}/ → {count} files")
-    
-    print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-    print(f"  Total   : {total_files} files")
-    print(f"  Size    : {total_size:,} bytes")
+
+    sep = f"{CYAN}  {'─'*48}{RESET}"
+    print(f"\n{sep}")
+    print(f"  HASIL CLONE ({len(folders)} folder)")
+    print(sep)
+
+    grand_files, grand_size = 0, 0
+    for folder in folders:
+        fp    = os.path.join(base_dir, folder)
+        count = 0
+        size  = 0
+        for root, _, files in os.walk(fp):
+            count += len(files)
+            for fn in files:
+                size += os.path.getsize(os.path.join(root, fn))
+        grand_files += count
+        grand_size  += size
+        print(f"\n  {CYAN}{folder}{RESET}  ({count} files, {fmt_size(size)})")
+        for sub in ['css', 'js', 'images', 'fonts', 'api', 'data']:
+            sp = os.path.join(fp, sub)
+            if os.path.exists(sp):
+                n = len([f for f in os.listdir(sp) if os.path.isfile(os.path.join(sp, f))])
+                if n:
+                    print(f"    {DIM}{sub}/{RESET} → {n} files")
+
+    print(f"\n{sep}")
+    print(f"  Total   : {grand_files} files")
+    print(f"  Size    : {fmt_size(grand_size)}")
     print(f"  Folder  : {base_dir}")
-    print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-    input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
+    print(sep)
+    input(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
 
 def scan_website():
-    url = input(f"  URL target: ").strip()
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
+    url = ask_url()
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0'}
-        res = requests.get(url, headers=headers, timeout=15, verify=False)
-        res.raise_for_status()
-        soup = BeautifulSoup(res.text, 'html.parser')
-        base_url = res.url
-        
-        # Extract links
-        links = [urljoin(base_url, a.get('href')) for a in soup.find_all('a', href=True) if a.get('href')]
-        links = [l for l in links if l.startswith(('http://', 'https://'))]
-        
-        images = [urljoin(base_url, img.get('src')) for img in soup.find_all('img', src=True) if img.get('src')]
-        images = [l for l in images if l.startswith(('http://', 'https://'))]
-        
-        scripts = [urljoin(base_url, script.get('src')) for script in soup.find_all('script', src=True) if script.get('src')]
-        scripts = [l for l in scripts if l.startswith(('http://', 'https://'))]
-        
-        css = [urljoin(base_url, link.get('href')) for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
-        css = [l for l in css if l.startswith(('http://', 'https://'))]
-        
-        # Extract APIs
-        api_patterns = [
-            r'fetch\s*\(\s*["\']([^"\']+)["\']',
-            r'axios\.[a-z]+\s*\(\s*["\']([^"\']+)["\']',
-            r'\.(?:get|post|put|delete|patch)\s*\(\s*["\']([^"\']+)["\']',
-            r'\/api\/[a-zA-Z0-9/_-]+',
-            r'graphql',
-            r'\/v[0-9]+\/[a-zA-Z0-9/_-]+',
+        headers = {'User-Agent': 'Mozilla/5.0 Chrome/124.0.0.0'}
+        res     = requests.get(url, headers=headers, timeout=15, verify=False)
+        enc     = res.encoding or 'utf-8'
+        html    = res.content.decode(enc, errors='replace')
+        soup    = BeautifulSoup(html, 'html.parser')
+        base    = res.url
+
+        links   = [urljoin(base, a.get('href', '')) for a in soup.find_all('a', href=True)]
+        images  = [urljoin(base, i.get('src', ''))  for i in soup.find_all('img', src=True)]
+        scripts = [urljoin(base, s.get('src', ''))  for s in soup.find_all('script', src=True)]
+        css     = [urljoin(base, l.get('href', '')) for l in soup.find_all('link', rel='stylesheet') if l.get('href')]
+        forms   = [t.get('action', 'N/A') for t in soup.find_all('form')]
+
+        apis    = set()
+        api_pats = [
+            r'fetch\s*\(\s*["\']([^"\']{4,})["\']',
+            r'axios\.[a-z]+\s*\(\s*["\']([^"\']{4,})["\']',
+            r'(\/api\/[a-zA-Z0-9/_\-?=&]+)',
+            r'(\/v\d+\/[a-zA-Z0-9/_\-?=&]+)',
         ]
-        apis = set()
-        for pattern in api_patterns:
-            found = re.findall(pattern, res.text, re.IGNORECASE)
-            for f in found:
-                if f and not f.startswith(('data:', 'blob:', 'javascript:')):
-                    if f.startswith(('/', 'api', 'http', './')):
-                        if f.startswith('/'):
-                            f = urljoin(base_url, f)
-                        apis.add(f)
-        
-        emails = set(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', res.text))
-        emails = [e for e in emails if not e.endswith(('.png', '.jpg', '.css', '.js', '.svg', '.webp'))]
-        
-        # Detect tech stack
-        tech_stack = []
-        js_content = ' '.join([s for s in [res.text] + [str(script.string) for script in soup.find_all('script') if script.string]])
-        if 'react' in js_content.lower() or 'react-dom' in js_content.lower():
-            tech_stack.append('React')
-        if 'vue' in js_content.lower():
-            tech_stack.append('Vue.js')
-        if 'angular' in js_content.lower() or 'ng-app' in js_content:
-            tech_stack.append('Angular')
-        if 'jquery' in js_content.lower():
-            tech_stack.append('jQuery')
-        if 'next' in js_content.lower() or '__NEXT_DATA__' in js_content:
-            tech_stack.append('Next.js')
-        if 'nuxt' in js_content.lower():
-            tech_stack.append('Nuxt.js')
-        if 'bootstrap' in js_content.lower():
-            tech_stack.append('Bootstrap')
-        if 'tailwind' in js_content.lower():
-            tech_stack.append('Tailwind CSS')
-        if 'wordpress' in js_content.lower():
-            tech_stack.append('WordPress')
-        if 'shopify' in js_content.lower():
-            tech_stack.append('Shopify')
-        
-        print(f"\n{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"  SCAN RESULT")
-        print(f"{CYAN}  ════════════════════════════════════════════{RESET}")
-        print(f"  Links     : {len(links)}")
-        print(f"  Images    : {len(images)}")
-        print(f"  JS        : {len(scripts)}")
-        print(f"  CSS       : {len(css)}")
-        print(f"  API       : {len(apis)}")
-        print(f"  Emails    : {len(emails)}")
-        if tech_stack:
-            print(f"  Tech      : {', '.join(tech_stack)}")
-        
+        for p in api_pats:
+            for f in re.findall(p, html, re.IGNORECASE):
+                val = f if isinstance(f, str) else f[0]
+                if val:
+                    apis.add(val)
+
+        emails = set(re.findall(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', html))
+
+        sep = f"{CYAN}  {'─'*48}{RESET}"
+        print(f"\n{sep}")
+        print(f"  SCAN RESULT — {url[:50]}")
+        print(sep)
+        print(f"  Links   : {len(links)}")
+        print(f"  Images  : {len(images)}")
+        print(f"  JS      : {len(scripts)}")
+        print(f"  CSS     : {len(css)}")
+        print(f"  Forms   : {len(forms)}")
+        print(f"  API     : {len(apis)}")
+        print(f"  Emails  : {len(emails)}")
+
         download_path = get_downloads_path()
-        output_dir = os.path.join(download_path, 'BONGKAR_WEB', 'scan_results')
-        os.makedirs(output_dir, exist_ok=True)
-        filename = hashlib.md5(url.encode()).hexdigest()[:12]
-        filepath = os.path.join(output_dir, f'scan_{filename}.json')
-        
+        out_dir  = os.path.join(download_path, 'BONGKAR_WEB', 'scan_results')
+        os.makedirs(out_dir, exist_ok=True)
+        fname    = f"scan_{hashlib.md5(url.encode()).hexdigest()[:12]}.json"
+        filepath = os.path.join(out_dir, fname)
+
         data = {
-            'url': url,
-            'timestamp': datetime.now().isoformat(),
-            'links': links,
-            'images': images,
-            'scripts': scripts,
-            'css': css,
-            'apis': list(apis),
-            'emails': list(emails),
-            'tech_stack': tech_stack,
-            'total_links': len(links),
-            'total_images': len(images),
-            'total_scripts': len(scripts),
-            'total_css': len(css),
-            'total_apis': len(apis),
-            'total_emails': len(emails)
+            'url'     : url,
+            'scanned' : datetime.now().isoformat(),
+            'links'   : links,
+            'images'  : images,
+            'scripts' : scripts,
+            'css'     : css,
+            'forms'   : forms,
+            'apis'    : sorted(apis),
+            'emails'  : sorted(emails),
         }
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"\n  Scan saved: {filepath}")
-    except Exception as e:
-        print(f"  Error: {e}")
-    input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
 
+        print(sep)
+        print(f"  {GREEN}Scan disimpan: {filepath}{RESET}")
+
+    except requests.exceptions.ConnectionError:
+        print(f"  {RED}Koneksi gagal{RESET}")
+    except Exception as e:
+        print(f"  {RED}Error: {e}{RESET}")
+
+    input(f"\n{YELLOW}  Enter untuk kembali...{RESET}")
+
+# ─── MAIN LOOP ─────────────────────────────────────────────────────────────────
 def main():
     while True:
         show_banner()
-        print(f"\n{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  PILIH:")
-        print(f"{GREEN}  ════════════════════════════════════════════{RESET}")
-        print(f"  {GREEN}1{WHITE}  DEEP CLONE (Full page + assets){RESET}")
-        print(f"  {GREEN}2{WHITE}  Check HTTP Status{RESET}")
-        print(f"  {GREEN}3{WHITE}  Get Page Metadata{RESET}")
-        print(f"  {GREEN}4{WHITE}  Lihat Hasil Clone{RESET}")
-        print(f"  {GREEN}5{WHITE}  SCAN WEBSITE{RESET}")
-        print(f"  {RED}6{WHITE}  Exit{RESET}")
+        sep = f"{GREEN}  {'─'*48}{RESET}"
+        print(sep)
+        print(f"  {WHITE}PILIH MENU{RESET}")
+        print(sep)
+        print(f"  {GREEN}1{RESET}  Deep Clone — full page + assets (offline-ready)")
+        print(f"  {GREEN}2{RESET}  Check HTTP Status")
+        print(f"  {GREEN}3{RESET}  Get Page Metadata")
+        print(f"  {GREEN}4{RESET}  Lihat Hasil Clone")
+        print(f"  {GREEN}5{RESET}  Scan Website")
+        print(f"  {RED}6{RESET}  Exit")
+        print(sep)
+
         choice = input(f"\n  {YELLOW}pilih (1-6): {RESET}").strip()
+
         if choice == '1':
             clone_deep()
         elif choice == '2':
@@ -846,17 +838,11 @@ def main():
         elif choice == '5':
             scan_website()
         elif choice == '6':
-            print(f"\n{GREEN}copy. save. conquer.{RESET}")
+            print(f"\n{GREEN}  copy. save. conquer.{RESET}\n")
             sys.exit(0)
         else:
-            print(f"  Pilihan salah!")
-            input(f"\n{YELLOW}Enter untuk kembali...{RESET}")
+            print(f"  {RED}Pilihan tidak valid.{RESET}")
+            time.sleep(0.8)
 
 if __name__ == '__main__':
-    try:
-        import requests
-        from bs4 import BeautifulSoup
-    except ImportError:
-        print(f"Install: pip install requests beautifulsoup4")
-        sys.exit(1)
     main()
